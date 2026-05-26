@@ -2,6 +2,16 @@
 
 ## 2026-05-27
 
+### GitHub Actions — GHCR Publish Workflow
+
+- Added `.github/workflows/publish.yml`: builds and publishes backend and frontend Docker images to GitHub Container Registry (`ghcr.io/maddogwarner/stake-selfhost-finance-dashboard/backend` and `.../frontend`).
+- Two parallel jobs run on push to `main`, push of `v*.*.*` tags, and manual `workflow_dispatch`.
+- Multi-platform builds: `linux/amd64` and `linux/arm64`.
+- Tags: `latest` (main branch), semver (`1.2`, `1`) on version tags, short SHA on every push.
+- Frontend `VITE_API_URL` defaults to `http://localhost:8000`; overridable via `workflow_dispatch` input for deployments to remote hosts.
+- GHA layer caching scoped per image to maximise cache hit rate.
+- Uses `GITHUB_TOKEN` for registry auth — no additional secrets required.
+
 ### Credential Security — Session Token Bootstrap
 
 - Added `backend/app/services/stake_service.py` with a startup bootstrap flow: if no session token is configured, the app authenticates with `STAKE_USERNAME`/`STAKE_PASSWORD`, extracts the session token from `client.headers.stake_session_token`, persists it to the `app_settings` DB table, caches it in a module-level variable, and zeros the credentials from memory.
