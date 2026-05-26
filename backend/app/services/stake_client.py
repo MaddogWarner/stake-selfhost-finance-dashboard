@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.config import settings
+from app.services.stake_service import get_cached_token
 
 
 def _normalise_exchange(value: str | None) -> str:
@@ -31,19 +32,14 @@ async def _build_client() -> Any:
     except ImportError as exc:
         raise RuntimeError("stake-python is not installed") from exc
 
-    if settings.stake_session_token:
+    token = get_cached_token() or settings.stake_session_token
+    if token:
         if hasattr(stake, "Stake"):
-            return stake.Stake(session_token=settings.stake_session_token)
+            return stake.Stake(session_token=token)
         if hasattr(stake, "StakeClient"):
-            return stake.StakeClient(session_token=settings.stake_session_token)
+            return stake.StakeClient(session_token=token)
 
-    if settings.stake_username and settings.stake_password:
-        if hasattr(stake, "Stake"):
-            return stake.Stake(username=settings.stake_username, password=settings.stake_password)
-        if hasattr(stake, "StakeClient"):
-            return stake.StakeClient(username=settings.stake_username, password=settings.stake_password)
-
-    raise RuntimeError("Stake credentials are not configured")
+    raise RuntimeError("No Stake session token available. Check backend logs for setup instructions.")
 
 
 async def _maybe_await(value: Any) -> Any:

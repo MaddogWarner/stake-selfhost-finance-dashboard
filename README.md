@@ -31,15 +31,30 @@ Read-only — no trade placement.
 
 ## Credentials
 
-### Stake session token (recommended)
+### Stake session token
 
-The dashboard uses the unofficial `stake-python` library. The easiest auth method is a session token:
+The dashboard uses the unofficial `stake-python` library and authenticates via a session token. There are two ways to provide it:
+
+**Option A — Copy from browser (quickest):**
 
 1. Log in to [hellostake.com/au](https://hellostake.com/au) in your browser
 2. Open DevTools → Application → Cookies
 3. Copy the value of the `Stake-Session-Token` cookie
+4. Paste it into `.env` as `STAKE_SESSION_TOKEN=<value>`
 
-Alternatively, provide your Stake username and password — the session token takes priority if both are set.
+**Option B — Bootstrap with username/password (first run only):**
+
+Set `STAKE_USERNAME` and `STAKE_PASSWORD` in `.env` and leave `STAKE_SESSION_TOKEN` blank. On the first startup the app authenticates, saves the token to the database, and logs it:
+
+```text
+[WARNING] Stake session token obtained and saved to database.
+          Update your .env: set STAKE_SESSION_TOKEN=<token>
+          then remove STAKE_USERNAME and STAKE_PASSWORD.
+```
+
+Copy the logged token to `STAKE_SESSION_TOKEN`, then comment out or remove `STAKE_USERNAME` and `STAKE_PASSWORD`. The token is also stored in the database, so future restarts work even before you update `.env`.
+
+**Session token expiry:** Stake tokens are valid for approximately 30 days. When one expires, repeat Option A or B to refresh it. The new token overwrites the old one in the database automatically.
 
 ### FMP API key
 
@@ -88,11 +103,11 @@ docker compose up --build
 
 On first boot the backend automatically runs database migrations before starting the scheduler. Allow 30–60 seconds for all services to become healthy.
 
-| Service  | URL                         |
-|----------|-----------------------------|
-| Dashboard | http://localhost:3000       |
-| API       | http://localhost:8000       |
-| API docs  | http://localhost:8000/docs  |
+| Service   | URL                           |
+| --------- | ----------------------------- |
+| Dashboard | <http://localhost:3000>       |
+| API       | <http://localhost:8000>       |
+| API docs  | <http://localhost:8000/docs>  |
 
 Both ports are bound to `127.0.0.1` only and are not accessible from other devices on your network.
 
@@ -118,7 +133,7 @@ docker compose down -v       # stop and delete all data (full reset)
 ## Data refresh schedule
 
 | Job | Frequency | Condition |
-|-----|-----------|-----------|
+| --- | --------- | --------- |
 | Stake sync | Every 15 min | Always |
 | Prices | Every 5 min | Market hours only (ASX/NYSE) |
 | Fundamentals | Daily at 06:00 UTC | New tickers only |
@@ -194,14 +209,14 @@ curl -X POST http://localhost:8000/api/admin/settings \
 
 ## Architecture
 
-```
+```text
 React (port 3000) → FastAPI (port 8000) → Redis (cache) → PostgreSQL → external APIs
 ```
 
 Four Docker services:
 
 | Service | Image | Purpose |
-|---------|-------|---------|
+| ------- | ----- | ------- |
 | `db` | postgres:16-alpine | Persistent storage |
 | `redis` | redis:7-alpine | Cache (prices 5min, news 1h, fundamentals 24h) |
 | `backend` | python:3.12-slim | FastAPI + APScheduler |
@@ -210,7 +225,7 @@ Four Docker services:
 External data sources:
 
 | Source | Used for | Rate limit |
-|--------|----------|------------|
+| ------ | -------- | ---------- |
 | Stake AU (unofficial) | Holdings, watchlist | Session-based |
 | Yahoo Finance (yfinance) | Price history, live quotes | Unofficial; cached 1h |
 | FMP free tier | Fundamentals, news | 250 calls/day (gated at 200) |

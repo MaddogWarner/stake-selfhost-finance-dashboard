@@ -9,6 +9,21 @@ VALID_SOURCES = {"fmp", "yfinance", "both"}
 SETTINGS_REDIS_KEY = "settings:data_source"
 
 
+async def get_stake_token(db: AsyncSession) -> str | None:
+    result = await db.execute(select(AppSetting.value).where(AppSetting.key == "stake_session_token"))
+    return result.scalar_one_or_none()
+
+
+async def set_stake_token(db: AsyncSession, token: str) -> None:
+    stmt = insert(AppSetting).values(key="stake_session_token", value=token)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[AppSetting.key],
+        set_={"value": stmt.excluded.value, "updated_at": func.now()},
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+
 async def get_data_source(redis: Redis, db: AsyncSession) -> str:
     cached = await redis.get(SETTINGS_REDIS_KEY)
     if cached in VALID_SOURCES:

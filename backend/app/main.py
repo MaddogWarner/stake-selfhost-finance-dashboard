@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, fundamentals, holdings, news, prices
 from app.db.redis import close_redis
+from app.db.session import AsyncSessionLocal
 from app.scheduler.registry import start_scheduler, stop_scheduler
+from app.services.stake_service import bootstrap_stake_token
 
 
 def _run_migrations() -> None:
@@ -22,6 +24,8 @@ def _run_migrations() -> None:
 async def lifespan(app: FastAPI):
     requests_cache.install_cache("/tmp/yfinance_cache", expire_after=3600)
     await asyncio.to_thread(_run_migrations)
+    async with AsyncSessionLocal() as db:
+        await bootstrap_stake_token(db)
     start_scheduler()
     try:
         yield
