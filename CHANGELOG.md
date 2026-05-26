@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-05-27 — v0.1.0
+
+### Release
+
+- Tagged and published `v0.1.0` as the first public release.
+- Created GitHub release with multi-platform Docker images (`linux/amd64`, `linux/arm64`) published to GHCR:
+  - `ghcr.io/maddogwarner/stake-selfhost-finance-dashboard/backend:0.1.0`
+  - `ghcr.io/maddogwarner/stake-selfhost-finance-dashboard/frontend:0.1.0`
+
+### Build Fix — pip Dependency Conflict
+
+- `stake==0.13.0` requires `python-dotenv<0.14.0`; `pydantic-settings==2.6.1` requires `python-dotenv>=0.21.0` — these are irreconcilable when pip resolves both together.
+- Fix: removed `stake==0.13.0` from `requirements.txt` and added a separate `pip install --no-deps stake==0.13.0` step in `backend/Dockerfile`. `--no-deps` bypasses stake's python-dotenv pin; env loading is handled entirely by pydantic-settings so stake's dotenv dependency is unused at runtime.
+
 ## 2026-05-27
 
 ### GitHub Actions — GHCR Publish Workflow
