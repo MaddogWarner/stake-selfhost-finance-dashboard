@@ -13,9 +13,10 @@ Read-only — no trade placement.
 - 52-week high/low signals (computed from full 1-year history)
 - 50-day moving average signals (computed server-side)
 - Company fundamentals: P/E ratio, market cap, sector
-- Latest news headlines per ticker (FMP, cached 1 hour)
+- Latest news headlines per ticker (cached 1 hour)
+- Runtime data source selector — switch between FMP, Yahoo Finance, or both from the dashboard header without restarting Docker
 - Market open/closed badge per exchange (DST-aware)
-- FMP daily call gate (hard limit: 200 calls/day)
+- FMP daily call gate (hard limit: 200 calls/day); use Yahoo Finance mode to run with zero FMP quota
 - Redis caching throughout; PostgreSQL persistence
 
 ---
@@ -24,7 +25,7 @@ Read-only — no trade placement.
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
 - A [Stake AU](https://hellostake.com/au) account
-- A free [Financial Modeling Prep](https://financialmodelingprep.com) API key (250 calls/day on the free tier)
+- A free [Financial Modeling Prep](https://financialmodelingprep.com) API key (250 calls/day on the free tier) — optional if you run in Yahoo Finance mode
 
 ---
 
@@ -42,7 +43,7 @@ Alternatively, provide your Stake username and password — the session token ta
 
 ### FMP API key
 
-Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and copy your key from the dashboard. The free tier provides 250 calls/day; the app gates itself at 200 to keep a buffer.
+Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and copy your key from the dashboard. The free tier provides 250 calls/day; the app gates itself at 200 to keep a buffer. If you set the data source to **Yahoo Finance Only**, FMP is never called and the key is unused.
 
 ---
 
@@ -159,6 +160,34 @@ alembic upgrade head
 
 # Roll back one step
 alembic downgrade -1
+```
+
+---
+
+## Data source
+
+The dashboard header contains a **Data source** dropdown that controls where fundamentals and news are fetched from. The change takes effect immediately — no restart required. Switching sources flushes the Redis cache for fundamentals and news so cards refetch against the new source on the next load.
+
+| Mode | Fundamentals & news | FMP calls/day |
+| ---- | ------------------- | ------------- |
+| **FMP + Yahoo Finance** (default) | FMP | Up to 200 |
+| **FMP Only** | FMP | Up to 200 |
+| **Yahoo Finance Only** | Yahoo Finance (yfinance) | 0 |
+
+Prices and price history always come from Yahoo Finance regardless of this setting (FMP price endpoints cost quota).
+
+The setting is stored in the database and persists across restarts. You can also read or update it via the API:
+
+```bash
+# Read current setting
+curl http://localhost:8000/api/admin/settings
+
+# Switch to Yahoo Finance only
+curl -X POST http://localhost:8000/api/admin/settings \
+  -H "Content-Type: application/json" \
+  -d '{"data_source": "yfinance"}'
+
+# Valid values: "both", "fmp", "yfinance"
 ```
 
 ---

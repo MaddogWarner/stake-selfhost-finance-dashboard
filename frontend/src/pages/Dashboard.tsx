@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { useMemo, useState } from 'react';
 import FeedCard from '../components/FeedCard';
 import MarketStatusBadge from '../components/MarketStatusBadge';
+import SettingsPanel from '../components/SettingsPanel';
 import { useHoldings, useSyncStake, useUsage, useWatchlist } from '../hooks/useHoldings';
 import type { Exchange, FeedAsset, MarketTab } from '../types';
 
@@ -52,6 +53,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <SettingsPanel />
             <span className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-300">
               API Usage: {usage.data?.fmp?.today ?? 0}
             </span>

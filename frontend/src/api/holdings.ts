@@ -17,8 +17,3 @@ export async function syncStake() {
   const response = await api.post<{ synced: boolean }>('/api/sync');
   return response.data;
 }
-
-export async function fetchUsage() {
-  const response = await api.get('/api/admin/usage');
-  return response.data;
-}

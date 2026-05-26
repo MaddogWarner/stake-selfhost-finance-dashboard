@@ -16,6 +16,7 @@ from app.models.news import News
 from app.models.price_history import PriceHistory
 from app.models.watchlist import Watchlist
 from app.services import fmp_service, yfinance_service
+from app.services.settings_service import get_data_source
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 NEW_YORK = ZoneInfo("America/New_York")
@@ -84,28 +85,42 @@ async def refresh_prices() -> None:
 async def refresh_fundamentals() -> None:
     tickers = await _unique_tickers()
     async with AsyncSessionLocal() as db:
+        source = await get_data_source(redis_client, db)
         existing = set((await db.execute(select(CompanyProfile.ticker))).scalars().all())
         for ticker, exchange in tickers:
             if ticker in existing:
                 continue
-            try:
-                profile = await fmp_service.get_company_profile(db, ticker)
-            except HTTPException as exc:
-                if exc.status_code == 429:
-                    break
-                raise
-            if not profile:
-                continue
-            row = CompanyProfile(
-                ticker=ticker,
-                exchange=exchange,
-                name=profile.get("companyName"),
-                sector=profile.get("sector"),
-                industry=profile.get("industry"),
-                description=profile.get("description"),
-                market_cap=profile.get("mktCap"),
-                pe_ratio=profile.get("pe"),
-            )
+            if source == "yfinance":
+                profile = await yfinance_service.get_fundamentals(ticker, exchange)
+                row = CompanyProfile(
+                    ticker=ticker,
+                    exchange=exchange,
+                    name=profile.get("name"),
+                    sector=profile.get("sector"),
+                    industry=profile.get("industry"),
+                    description=profile.get("description"),
+                    market_cap=profile.get("market_cap"),
+                    pe_ratio=profile.get("pe_ratio"),
+                )
+            else:
+                try:
+                    profile = await fmp_service.get_company_profile(db, ticker)
+                except HTTPException as exc:
+                    if exc.status_code == 429:
+                        break
+                    raise
+                if not profile:
+                    continue
+                row = CompanyProfile(
+                    ticker=ticker,
+                    exchange=exchange,
+                    name=profile.get("companyName"),
+                    sector=profile.get("sector"),
+                    industry=profile.get("industry"),
+                    description=profile.get("description"),
+                    market_cap=profile.get("mktCap"),
+                    pe_ratio=profile.get("pe"),
+                )
             db.add(row)
         await db.commit()
 
@@ -113,23 +128,28 @@ async def refresh_fundamentals() -> None:
 async def refresh_news() -> None:
     tickers = await _unique_tickers()
     async with AsyncSessionLocal() as db:
-        for ticker, _exchange in tickers:
-            try:
-                items = await fmp_service.get_news(db, ticker, limit=3)
-            except HTTPException as exc:
-                if exc.status_code == 429:
-                    break
-                raise
+        source = await get_data_source(redis_client, db)
+        for ticker, exchange in tickers:
+            if source == "yfinance":
+                items = await yfinance_service.get_news(ticker, exchange, limit=3)
+            else:
+                try:
+                    items = await fmp_service.get_news(db, ticker, limit=3)
+                except HTTPException as exc:
+                    if exc.status_code == 429:
+                        break
+                    raise
             for item in items:
-                headline = item.get("title") or item.get("headline")
+                headline = item.get("headline") or item.get("title")
                 if not headline:
                     continue
+                published_at = item.get("published_at") or _parse_datetime(item.get("publishedDate"))
                 stmt = insert(News).values(
                     ticker=ticker,
                     headline=headline,
-                    source=item.get("site") or item.get("source"),
+                    source=item.get("source") or item.get("site"),
                     url=item.get("url"),
-                    published_at=_parse_datetime(item.get("publishedDate")),
+                    published_at=published_at,
                 )
                 stmt = stmt.on_conflict_do_nothing(index_elements=[News.ticker, News.url])
                 await db.execute(stmt)
@@ -138,8 +158,11 @@ async def refresh_news() -> None:
 
 
 async def refresh_financials() -> None:
-    tickers = await _unique_tickers()
     async with AsyncSessionLocal() as db:
+        source = await get_data_source(redis_client, db)
+        if source == "yfinance":
+            return
+        tickers = await _unique_tickers()
         for ticker, exchange in tickers:
             try:
                 profile = await fmp_service.get_company_profile(db, ticker)

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchHoldings, fetchUsage, fetchWatchlist, syncStake } from '../api/holdings';
+import { fetchUsage } from '../api/admin';
+import { fetchHoldings, fetchWatchlist, syncStake } from '../api/holdings';
 import type { Exchange } from '../types';
 
 export function useHoldings(exchange?: Exchange) {

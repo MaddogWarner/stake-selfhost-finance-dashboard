@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 import yfinance as yf
@@ -19,6 +19,13 @@ def _clean_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _nested_url(value: Any) -> str | None:
+    if isinstance(value, dict):
+        url = value.get("url")
+        return str(url) if url else None
+    return str(value) if value else None
 
 
 async def get_price_history(ticker: str, exchange: str) -> list[dict[str, Any]]:
@@ -68,6 +75,54 @@ async def get_live_quote(ticker: str, exchange: str) -> dict[str, Any]:
         }
 
     return await asyncio.to_thread(_quote)
+
+
+async def get_fundamentals(ticker: str, exchange: str) -> dict[str, Any]:
+    symbol = normalise_ticker(ticker, exchange)
+
+    def _fetch() -> dict[str, Any]:
+        info = yf.Ticker(symbol).info or {}
+        return {
+            "name": info.get("longName") or info.get("shortName"),
+            "sector": info.get("sector"),
+            "industry": info.get("industry"),
+            "description": info.get("longBusinessSummary"),
+            "market_cap": info.get("marketCap"),
+            "pe_ratio": info.get("trailingPE"),
+        }
+
+    return await asyncio.to_thread(_fetch)
+
+
+async def get_news(ticker: str, exchange: str, limit: int = 5) -> list[dict[str, Any]]:
+    symbol = normalise_ticker(ticker, exchange)
+
+    def _fetch() -> list[dict[str, Any]]:
+        items = yf.Ticker(symbol).news or []
+        result: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            content = item.get("content") if isinstance(item.get("content"), dict) else {}
+            provider = content.get("provider") if isinstance(content.get("provider"), dict) else {}
+            published = item.get("providerPublishTime") or content.get("pubDate")
+            published_at = None
+            if isinstance(published, (int, float)):
+                published_at = datetime.fromtimestamp(published, tz=timezone.utc)
+            elif isinstance(published, str):
+                try:
+                    published_at = datetime.fromisoformat(published.replace("Z", "+00:00"))
+                except ValueError:
+                    published_at = None
+            result.append(
+                {
+                    "headline": item.get("title") or content.get("title"),
+                    "source": item.get("publisher") or provider.get("displayName"),
+                    "url": item.get("link") or _nested_url(content.get("clickThroughUrl")) or _nested_url(content.get("canonicalUrl")),
+                    "published_at": published_at,
+                }
+            )
+        return result
+
+    return await asyncio.to_thread(_fetch)
 
 
 async def download_batch_history(tickers: list[tuple[str, str]], period: str = "1y") -> dict[str, list[dict[str, Any]]]:

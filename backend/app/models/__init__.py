@@ -6,6 +6,7 @@ class Base(DeclarativeBase):
 
 
 from app.models.api_usage import ApiUsage  # noqa: E402,F401
+from app.models.app_setting import AppSetting  # noqa: E402,F401
 from app.models.company_profile import CompanyProfile  # noqa: E402,F401
 from app.models.holding import Holding  # noqa: E402,F401
 from app.models.news import News  # noqa: E402,F401

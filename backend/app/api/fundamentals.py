@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from redis.asyncio import Redis
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.redis import get_redis
 from app.db.session import get_db
 from app.models.company_profile import CompanyProfile
-from app.services import fmp_service
+from app.services import fmp_service, yfinance_service
+from app.services.settings_service import get_data_source
 
 router = APIRouter()
 
@@ -30,34 +31,35 @@ async def get_fundamentals(
     if cached:
         return json.loads(cached)
 
-    row = (await db.execute(select(CompanyProfile).where(CompanyProfile.ticker == ticker))).scalar_one_or_none()
-    if row:
+    source = await get_data_source(redis, db)
+    if source == "yfinance":
+        raw = await yfinance_service.get_fundamentals(ticker, exchange)
         payload = {
-            "ticker": row.ticker,
-            "exchange": row.exchange,
-            "name": row.name,
-            "sector": row.sector,
-            "industry": row.industry,
-            "description": row.description,
-            "market_cap": row.market_cap,
-            "pe_ratio": float(row.pe_ratio) if row.pe_ratio is not None else None,
-            "fetched_at": row.fetched_at.isoformat(),
+            "ticker": ticker,
+            "exchange": exchange,
+            "name": raw.get("name"),
+            "sector": raw.get("sector"),
+            "industry": raw.get("industry"),
+            "description": raw.get("description"),
+            "market_cap": raw.get("market_cap"),
+            "pe_ratio": raw.get("pe_ratio"),
+            "fetched_at": datetime.now(timezone.utc),
         }
-        await redis.setex(cache_key, 86400, json.dumps(payload, default=str))
-        return payload
+    else:
+        profile = await fmp_service.get_company_profile(db, ticker)
+        ratios = await fmp_service.get_financial_ratios(db, ticker)
+        payload = {
+            "ticker": ticker,
+            "exchange": exchange,
+            "name": profile.get("companyName") or profile.get("companyName", ticker),
+            "sector": profile.get("sector"),
+            "industry": profile.get("industry"),
+            "description": profile.get("description"),
+            "market_cap": profile.get("mktCap"),
+            "pe_ratio": ratios.get("peRatioTTM") or profile.get("pe"),
+            "fetched_at": datetime.now(timezone.utc),
+        }
 
-    profile = await fmp_service.get_company_profile(db, ticker)
-    ratios = await fmp_service.get_financial_ratios(db, ticker)
-    payload = {
-        "ticker": ticker,
-        "exchange": exchange,
-        "name": profile.get("companyName") or profile.get("companyName", ticker),
-        "sector": profile.get("sector"),
-        "industry": profile.get("industry"),
-        "description": profile.get("description"),
-        "market_cap": profile.get("mktCap"),
-        "pe_ratio": ratios.get("peRatioTTM") or profile.get("pe"),
-    }
     stmt = insert(CompanyProfile).values(**payload)
     stmt = stmt.on_conflict_do_update(
         index_elements=[CompanyProfile.ticker],

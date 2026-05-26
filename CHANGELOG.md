@@ -2,6 +2,30 @@
 
 ## 2026-05-26
 
+### Data Source Selector
+
+- Added yfinance-backed fundamentals and news fetchers while keeping `yfinance==0.2.50` as the pinned PyPI dependency.
+- Added the `app_settings` model and migration `0003_app_settings`, seeding `data_source = 'both'`.
+- Added Redis-cached settings helpers for reading and updating the active data source.
+- Added `GET /api/admin/settings` and `POST /api/admin/settings` endpoints with validation for `both`, `fmp`, and `yfinance`.
+- Flushes `fundamentals:*` and `news:*` Redis cache entries when the data source changes so cards refetch against the selected source.
+- Updated fundamentals and news API routes to use the active source setting after Redis cache misses.
+- Updated scheduled fundamentals and news refresh jobs to respect the active source setting.
+- Updated the weekly financial refresh job to skip FMP-only calls when the active data source is `yfinance`.
+- Added frontend settings API calls, React Query hooks, `DataSource` and `AppSettings` types, and an inline Dashboard settings dropdown.
+
+### Data Source Selector Validation
+
+- Passed Python syntax compilation for `backend/app` and `backend/alembic` using a writable pycache prefix.
+- Passed `npm run build` for the React frontend.
+- Confirmed `npm audit --omit=dev` reports zero production vulnerabilities.
+- Confirmed `requirements.txt` still pins `yfinance==0.2.50`; no yfinance source repo was cloned or vendored.
+
+### Data Source Selector Known Follow-Ups
+
+- Full Docker Compose validation was not run because Docker is not installed in this environment.
+- Live verification of FMP quota behaviour, yfinance fundamentals/news results, and scheduler behaviour requires running Postgres/Redis/FastAPI with valid local `.env` values.
+
 ### Claude Review Fixes
 
 - Added migration `0002_news_unique_ticker_url` and model constraint to prevent duplicate news rows for the same ticker and URL.

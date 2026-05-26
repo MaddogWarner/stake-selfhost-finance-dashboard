@@ -1,6 +1,7 @@
 export type Exchange = 'ASX' | 'NYSE';
 export type MarketTab = Exchange | 'ALL';
 export type AssetKind = 'holding' | 'watchlist';
+export type DataSource = 'fmp' | 'yfinance' | 'both';
 
 export interface Holding {
   id: number;
@@ -62,6 +63,10 @@ export interface ApiUsage {
     limit: number;
     remaining: number;
   };
+}
+
+export interface AppSettings {
+  data_source: DataSource;
 }
 
 export interface FeedAsset {

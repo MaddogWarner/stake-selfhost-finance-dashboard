@@ -5,14 +5,14 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from redis.asyncio import Redis
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.redis import get_redis
 from app.db.session import get_db
 from app.models.news import News
-from app.services import fmp_service
+from app.services import fmp_service, yfinance_service
+from app.services.settings_service import get_data_source
 
 router = APIRouter()
 
@@ -39,35 +39,22 @@ async def get_news(
     if cached:
         return json.loads(cached)
 
-    rows = (
-        await db.execute(
-            select(News).where(News.ticker == ticker).order_by(News.published_at.desc().nullslast()).limit(5)
-        )
-    ).scalars().all()
-    if rows:
-        payload = [
-            {
-                "ticker": row.ticker,
-                "headline": row.headline,
-                "source": row.source,
-                "url": row.url,
-                "published_at": row.published_at.isoformat() if row.published_at else None,
-            }
-            for row in rows
-        ]
-        await redis.setex(cache_key, 3600, json.dumps(payload, default=str))
-        return payload
+    selected_exchange = exchange.upper() if exchange else "NYSE"
+    source = await get_data_source(redis, db)
+    if source == "yfinance":
+        items = await yfinance_service.get_news(ticker, selected_exchange, limit=5)
+    else:
+        items = await fmp_service.get_news(db, ticker, limit=5)
 
-    items = await fmp_service.get_news(db, ticker, limit=5)
     payload: list[dict] = []
     for item in items:
-        headline = item.get("title") or item.get("headline") or ""
-        published_at = _parse_datetime(item.get("publishedDate"))
+        headline = item.get("headline") or item.get("title") or ""
+        published_at = item.get("published_at") or _parse_datetime(item.get("publishedDate"))
         if headline:
             stmt = insert(News).values(
                 ticker=ticker,
                 headline=headline,
-                source=item.get("site") or item.get("source"),
+                source=item.get("source") or item.get("site"),
                 url=item.get("url"),
                 published_at=published_at,
             )
@@ -77,7 +64,7 @@ async def get_news(
                 {
                     "ticker": ticker,
                     "headline": headline,
-                    "source": item.get("site") or item.get("source"),
+                    "source": item.get("source") or item.get("site"),
                     "url": item.get("url"),
                     "published_at": published_at.isoformat() if published_at else None,
                 }
