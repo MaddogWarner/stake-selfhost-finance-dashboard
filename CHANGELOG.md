@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-05-27
+
+### Credential Security — Session Token Bootstrap
+
+- Added `backend/app/services/stake_service.py` with a startup bootstrap flow: if no session token is configured, the app authenticates with `STAKE_USERNAME`/`STAKE_PASSWORD`, extracts the session token from `client.headers.stake_session_token`, persists it to the `app_settings` DB table, caches it in a module-level variable, and zeros the credentials from memory.
+- Updated `backend/app/main.py` lifespan to call `bootstrap_stake_token(db)` after migrations, before the scheduler starts.
+- Updated `stake_client._build_client()` to use the bootstrapped cached token; the username/password auth branch is removed — credentials are no longer passed to the Stake library directly.
+- Added `get_stake_token()` and `set_stake_token()` to `settings_service.py` using the existing `app_settings` table.
+- Updated `.env.example`: `STAKE_USERNAME`/`STAKE_PASSWORD` are now commented out as bootstrap-only fields with explanatory comments.
+- Updated `README.md` credentials section to document the two auth options (browser cookie copy vs. username/password bootstrap) and the session token rotation process.
+- Added `scripts/rotate-token.sh`: updates `STAKE_SESSION_TOKEN` in `.env` and comments out `STAKE_USERNAME`/`STAKE_PASSWORD` in one step.
+
 ## 2026-05-26
 
 ### Data Source Selector
