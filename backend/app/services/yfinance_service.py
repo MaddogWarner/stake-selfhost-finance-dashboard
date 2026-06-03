@@ -32,7 +32,9 @@ async def get_price_history(ticker: str, exchange: str) -> list[dict[str, Any]]:
     symbol = normalise_ticker(ticker, exchange)
 
     def _download() -> list[dict[str, Any]]:
-        frame = yf.download(symbol, period="1y", auto_adjust=True, progress=False)
+        # Use Ticker.history (single HTTP fetch) rather than yf.download, whose internal
+        # thread pool deadlocks the device when many cards request prices concurrently.
+        frame = yf.Ticker(symbol).history(period="1y", auto_adjust=True)
         if frame.empty:
             return []
         rows: list[dict[str, Any]] = []
@@ -60,8 +62,10 @@ async def get_live_quote(ticker: str, exchange: str) -> dict[str, Any]:
 
     def _quote() -> dict[str, Any]:
         info = yf.Ticker(symbol).fast_info
-        price = _clean_float(info.get("last_price"))
-        prev_close = _clean_float(info.get("previous_close"))
+        # yfinance 1.x exposes camelCase fast_info keys (lastPrice/previousClose);
+        # keep snake_case fallbacks for older versions.
+        price = _clean_float(info.get("lastPrice") or info.get("last_price"))
+        prev_close = _clean_float(info.get("previousClose") or info.get("previous_close"))
         change = price - prev_close if price is not None and prev_close is not None else None
         change_pct = (change / prev_close * 100) if change is not None and prev_close else None
         return {
@@ -132,7 +136,7 @@ async def download_batch_history(tickers: list[tuple[str, str]], period: str = "
 
     def _download() -> dict[str, list[dict[str, Any]]]:
         symbols = [item[2] for item in grouped]
-        frame = yf.download(symbols, period=period, auto_adjust=True, progress=False, group_by="ticker")
+        frame = yf.download(symbols, period=period, auto_adjust=True, progress=False, group_by="ticker", threads=False)
         data: dict[str, list[dict[str, Any]]] = {}
         for ticker, exchange, symbol in grouped:
             source = frame[symbol] if len(symbols) > 1 and symbol in frame.columns.get_level_values(0) else frame

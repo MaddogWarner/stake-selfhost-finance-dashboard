@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       vite_api_url:
-        description: "VITE_API_URL baked into the frontend image"
+        description: "VITE_API_URL for the frontend image (leave blank to use relative /api via the bundled nginx proxy)"
         required: false
-        default: "http://localhost:8000"
+        default: ""
 
 permissions:
   contents: read
@@ -71,6 +71,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}/frontend
           tags: |
             type=ref,event=branch
+            type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
@@ -83,6 +84,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VITE_API_URL=${{ inputs.vite_api_url || 'http://localhost:8000' }}
+            VITE_API_URL=${{ inputs.vite_api_url }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend

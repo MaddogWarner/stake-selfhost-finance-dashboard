@@ -2,6 +2,7 @@ export type Exchange = 'ASX' | 'NYSE';
 export type MarketTab = Exchange | 'ALL';
 export type AssetKind = 'holding' | 'watchlist';
 export type DataSource = 'fmp' | 'yfinance' | 'both';
+export type AssetSource = 'manual' | 'stake';
 
 export interface Holding {
   id: number;
@@ -9,6 +10,7 @@ export interface Holding {
   exchange: Exchange;
   quantity: string;
   avg_cost: string | null;
+  source: AssetSource;
   last_synced_at: string;
 }
 
@@ -16,7 +18,30 @@ export interface WatchlistItem {
   id: number;
   ticker: string;
   exchange: Exchange;
+  source: AssetSource;
   added_at: string;
+}
+
+export interface HoldingCreate {
+  ticker: string;
+  exchange: Exchange;
+  quantity: string;
+  avg_cost?: string | null;
+}
+
+export interface HoldingUpdate {
+  quantity?: string;
+  avg_cost?: string | null;
+}
+
+export interface WatchlistCreate {
+  ticker: string;
+  exchange: Exchange;
+}
+
+export interface StakeStatus {
+  configured: boolean;
+  last_sync: string | null;
 }
 
 export interface PricePoint {
@@ -75,4 +100,5 @@ export interface FeedAsset {
   kind: AssetKind;
   quantity?: string;
   avg_cost?: string | null;
+  source?: AssetSource;
 }

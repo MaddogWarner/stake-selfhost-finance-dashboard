@@ -33,8 +33,10 @@ services:
   frontend:
     build:
       context: ../frontend
+      # Empty -> the app uses relative /api, which the bundled nginx proxies to the
+      # backend. Set an absolute URL only if the backend is reached directly (no proxy).
       args:
-        VITE_API_URL: http://localhost:8000
+        VITE_API_URL: ""
     ports:
       - "127.0.0.1:3000:80"
     depends_on:

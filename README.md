@@ -1,6 +1,6 @@
 # Stake Investment Dashboard
 
-A self-hosted investment dashboard that pulls your live holdings and watchlist from [Stake AU](https://hellostake.com/au) and enriches them with price history, fundamentals, and news from Yahoo Finance and Financial Modeling Prep (FMP). Displayed as a card-based feed with ASX, S&P/US, and All market tabs.
+A self-hosted investment dashboard. Track stocks two ways: add holdings and watchlist tickers yourself, or optionally sync them live from [Stake AU](https://hellostake.com/au). Either way they're enriched with price history, fundamentals, and news from Yahoo Finance and Financial Modeling Prep (FMP), and displayed as a card-based feed with ASX, S&P/US, and All market tabs.
 
 Read-only — no trade placement.
 
@@ -8,7 +8,8 @@ Read-only — no trade placement.
 
 ## Features
 
-- Live holdings and watchlist synced from Stake AU
+- Manual holdings and watchlist tracking — add/edit/delete tickers from the dashboard (no broker login needed)
+- Optional live holdings and watchlist sync from Stake AU (paste a session token in the dashboard)
 - 30-day price sparkline per card with daily change
 - 52-week high/low signals (computed from full 1-year history)
 - 50-day moving average signals (computed server-side)
@@ -31,34 +32,31 @@ Read-only — no trade placement.
 
 ## Credentials
 
-### Stake session token
+### Stake sync is optional
 
-The dashboard uses the unofficial `stake-python` library and authenticates via a session token. There are two ways to provide it:
+You don't need a Stake account to use the dashboard. Click **Manage** in the header to add holdings (ticker, exchange, quantity, average cost) and watchlist tickers by hand. This is the reliable default and never depends on Stake.
 
-**Option A — Copy from browser (quickest):**
+If you do want to auto-sync from Stake AU, the dashboard uses the unofficial `stake-python` library, which authenticates with a **session token**.
 
-1. Log in to [hellostake.com/au](https://hellostake.com/au) in your browser
-2. Open DevTools → Application → Cookies
-3. Copy the value of the `Stake-Session-Token` cookie
-4. Paste it into `.env` as `STAKE_SESSION_TOKEN=<value>`
+**Recommended — paste the token in the dashboard:**
 
-**Option B — Bootstrap with username/password (first run only):**
+1. Log in to [trading.hellostake.com](https://trading.hellostake.com) in your browser.
+2. Open DevTools (F12) → **Network** tab, then click around the app (e.g. open your portfolio/watchlist) so requests appear.
+3. Click any request to `api2.prd.hellostake.com` and find the **`Stake-Session-Token`** entry under **Request Headers** (it's a request header, not a cookie).
+4. Copy its value, click **Connect Stake** in the dashboard header, paste it, and click **Connect**. The token is validated against Stake and persisted to the database.
+5. Click **Sync** to pull holdings and watchlist.
 
-Set `STAKE_USERNAME` and `STAKE_PASSWORD` in `.env` and leave `STAKE_SESSION_TOKEN` blank. On the first startup the app authenticates, saves the token to the database, and logs it:
+**Alternative — set it in `.env`:** put the token in `STAKE_SESSION_TOKEN`. It's persisted to the database on first use, so subsequent restarts work even if you later blank it.
 
-```text
-[WARNING] Stake session token obtained and saved to database.
-          Update your .env: set STAKE_SESSION_TOKEN=<token>
-          then remove STAKE_USERNAME and STAKE_PASSWORD.
-```
+**Bootstrap with username/password (one-time, advanced):** set `STAKE_USERNAME`, `STAKE_PASSWORD`, and — if your account has 2FA — a *current* `STAKE_OTP` code, leaving `STAKE_SESSION_TOKEN` blank. On startup the app exchanges these for a session token and persists it. Because the OTP is short-lived this only works at the moment a fresh code is supplied; the paste-token flow above is simpler.
 
-Copy the logged token to `STAKE_SESSION_TOKEN`, then comment out or remove `STAKE_USERNAME` and `STAKE_PASSWORD`. The token is also stored in the database, so future restarts work even before you update `.env`.
+**Session token expiry:** Stake tokens are valid for ~30 days. When one expires, repeat the paste-token flow to refresh it — the new token overwrites the old one automatically. Your manually added holdings/watchlist are never affected by Stake sync.
 
-**Session token expiry:** Stake tokens are valid for approximately 30 days. When one expires, repeat Option A or B to refresh it. The new token overwrites the old one in the database automatically.
+### FMP API key (optional)
 
-### FMP API key
+> **Note:** FMP has retired its legacy v3 endpoints; free-tier and older keys now return `403 Legacy Endpoint`. Unless you have a current FMP plan, leave this unset and use **Yahoo Finance Only** — the recommended data source for fundamentals and news (see [Data source](#data-source)).
 
-Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and copy your key from the dashboard. The free tier provides 250 calls/day; the app gates itself at 200 to keep a buffer. If you set the data source to **Yahoo Finance Only**, FMP is never called and the key is unused.
+Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and copy your key. The free tier historically provided 250 calls/day; the app gates itself at 200 to keep a buffer. With the data source set to **Yahoo Finance Only**, FMP is never called and the key is unused.
 
 ---
 
@@ -75,10 +73,14 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-# Use session token (preferred) or username/password
-STAKE_SESSION_TOKEN=your_token_here
+# Optional — only needed for Stake auto-sync. You can also paste the token via the
+# dashboard's "Connect Stake" button instead of setting it here. Leave blank to use
+# manual tracking only.
+STAKE_SESSION_TOKEN=
+# One-time bootstrap alternative (advanced). STAKE_OTP is your current 2FA code, if enabled.
 # STAKE_USERNAME=your@email.com
 # STAKE_PASSWORD=yourpassword
+# STAKE_OTP=
 
 FMP_API_KEY=your_fmp_key_here
 
@@ -92,28 +94,38 @@ VITE_API_URL=http://localhost:8000
 
 ## Deploy (Docker)
 
-All Docker Compose commands run from the `docker/` directory.
+Two options. Both run Postgres, Redis, the FastAPI backend, and the React frontend (which serves the UI and proxies `/api` to the backend). The backend runs database migrations automatically on first boot — allow 30–60 seconds for everything to settle. All Compose commands run from the `docker/` directory.
+
+### Option A — Prebuilt images from GHCR (recommended)
+
+No local build; pulls multi-arch images (`linux/amd64`, `linux/arm64`) from GitHub Container Registry.
+
+```bash
+git clone https://github.com/MaddogWarner/stake-selfhost-finance-dashboard.git
+cd stake-selfhost-finance-dashboard
+cp .env.example .env            # optional: add FMP/Stake creds (see Credentials)
+
+cd docker
+TAG=0.2.0 docker compose -f docker-compose.ghcr.yml up -d
+```
+
+- Pin a release with `TAG` (e.g. `0.2.0`), or omit it to use `latest`.
+- Only the frontend port is published — `127.0.0.1:3000` by default. Expose it on your LAN with `FRONTEND_BIND`, e.g. `FRONTEND_BIND=192.168.1.150:3000 TAG=0.2.0 docker compose -f docker-compose.ghcr.yml up -d`. The backend is reachable only inside the Compose network, via the frontend's `/api` proxy.
+- Images are published publicly by CI; if you make the packages private, run `docker login ghcr.io` first.
+- Update to a new release: `TAG=<version> docker compose -f docker-compose.ghcr.yml pull && ... up -d`.
+
+### Option B — Build from source
 
 ```bash
 cd docker
-
-# Build and start all four services
 docker compose up --build
 ```
 
-On first boot the backend automatically runs database migrations before starting the scheduler. Allow 30–60 seconds for all services to become healthy.
-
-| Service   | URL                           |
-| --------- | ----------------------------- |
-| Dashboard | <http://localhost:3000>       |
-| API       | <http://localhost:8000>       |
-| API docs  | <http://localhost:8000/docs>  |
-
-Both ports are bound to `127.0.0.1` only and are not accessible from other devices on your network.
+Serves the dashboard at <http://localhost:3000>, the API at <http://localhost:8000> (and docs at `/docs`), both bound to `127.0.0.1` only.
 
 ### Initial data load
 
-After the stack is up, trigger a manual Stake sync to populate holdings and watchlist:
+Add tickers via the **Manage** button in the header (no Stake needed), or — if you've connected Stake — trigger a sync to pull holdings and watchlist:
 
 ```bash
 curl -X POST http://localhost:8000/api/sync
@@ -183,13 +195,15 @@ alembic downgrade -1
 
 The dashboard header contains a **Data source** dropdown that controls where fundamentals and news are fetched from. The change takes effect immediately — no restart required. Switching sources flushes the Redis cache for fundamentals and news so cards refetch against the new source on the next load.
 
+> **Recommended: Yahoo Finance Only.** FMP retired its legacy v3 endpoints, so the **FMP** and **FMP + Yahoo Finance** modes return errors unless you have a current FMP plan. New installs seed **FMP + Yahoo Finance**; switch to **Yahoo Finance Only** (one click, or via the API below) for working fundamentals and news with no API key.
+
 | Mode | Fundamentals & news | FMP calls/day |
 | ---- | ------------------- | ------------- |
-| **FMP + Yahoo Finance** (default) | FMP | Up to 200 |
-| **FMP Only** | FMP | Up to 200 |
-| **Yahoo Finance Only** | Yahoo Finance (yfinance) | 0 |
+| **Yahoo Finance Only** (recommended) | Yahoo Finance (yfinance) | 0 |
+| **FMP + Yahoo Finance** (seeded default) | FMP (needs current plan) | Up to 200 |
+| **FMP Only** | FMP (needs current plan) | Up to 200 |
 
-Prices and price history always come from Yahoo Finance regardless of this setting (FMP price endpoints cost quota).
+Prices and price history always come from Yahoo Finance regardless of this setting.
 
 The setting is stored in the database and persists across restarts. You can also read or update it via the API:
 
@@ -245,7 +259,7 @@ Returns today's FMP call count, limit, and remaining calls.
 ## Troubleshooting
 
 **No holdings/watchlist after sync**
-Verify your Stake credentials in `.env`. The session token expires periodically — refresh it from your browser cookies.
+Stake tokens expire (~30 days). Refresh it via **Connect Stake** in the dashboard — copy the `Stake-Session-Token` request header (DevTools → Network → an `api2.prd.hellostake.com` request), not a cookie. `POST /api/sync` returns a clear error if the token is missing or invalid; your manually added tickers are unaffected. If you don't use Stake, add tickers via **Manage**.
 
 **FMP data not loading**
 Check `GET /api/admin/usage`. If today's count is at 200, data will resume the next calendar day (UTC).

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -18,6 +17,11 @@ def get_cached_token() -> str | None:
     return _cached_token
 
 
+def set_cached_token(token: str | None) -> None:
+    global _cached_token
+    _cached_token = token
+
+
 async def bootstrap_stake_token(db: AsyncSession) -> None:
     global _cached_token
 
@@ -33,14 +37,19 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
         logger.info("Stake session token loaded from database.")
         return
 
-    # Priority 3: exchange username/password for a token (bootstrap path)
+    # Priority 3: exchange username/password for a token (one-time bootstrap path).
+    # NOTE: a 2FA account needs a *live* OTP here; the OTP is short-lived, so this only
+    # works at the instant a fresh STAKE_OTP is supplied. The dashboard "Connect Stake"
+    # paste-token flow is the primary path.
     if not (settings.stake_username and settings.stake_password):
-        logger.warning("No Stake credentials configured. Sync will fail until credentials are provided.")
+        logger.warning("No Stake credentials configured. Sync will fail until a token is provided.")
         return
 
     logger.info("No session token found; authenticating with STAKE_USERNAME/STAKE_PASSWORD.")
     try:
-        token = await asyncio.to_thread(_authenticate, settings.stake_username, settings.stake_password)
+        token = await _authenticate(
+            settings.stake_username, settings.stake_password, settings.stake_otp
+        )
     except Exception as exc:
         logger.error("Stake authentication failed: %s", exc)
         return
@@ -57,28 +66,24 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
     try:
         object.__setattr__(settings, "stake_password", None)
         object.__setattr__(settings, "stake_username", None)
+        object.__setattr__(settings, "stake_otp", None)
     except Exception:
         pass
 
     logger.warning(
-        "Stake session token obtained and saved to database. "
-        "Update your .env: set STAKE_SESSION_TOKEN=%s "
-        "then remove STAKE_USERNAME and STAKE_PASSWORD.",
-        token,
+        "Stake session token obtained and saved. It is now persisted in the database; "
+        "you can leave STAKE_USERNAME/STAKE_PASSWORD/STAKE_OTP unset."
     )
 
 
-def _authenticate(username: str, password: str) -> str | None:
+async def _authenticate(username: str, password: str, otp: str | None = None) -> str | None:
     try:
         import stake  # type: ignore
     except ImportError as exc:
         raise RuntimeError("stake-python is not installed") from exc
 
-    cls: Any = getattr(stake, "Stake", None) or getattr(stake, "StakeClient", None)
-    if cls is None:
-        raise RuntimeError("stake-python: could not find Stake or StakeClient class")
-
-    client = cls(username=username, password=password)
-    headers = getattr(client, "headers", None)
-    token = getattr(headers, "stake_session_token", None) if headers else None
+    request: Any = stake.CredentialsLoginRequest(username=username, password=password, otp=otp)
+    async with stake.StakeClient(request) as session:
+        headers = getattr(session, "headers", None)
+        token = getattr(headers, "stake_session_token", None) if headers else None
     return str(token) if token else None

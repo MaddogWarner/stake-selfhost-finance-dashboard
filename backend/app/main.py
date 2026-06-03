@@ -2,7 +2,6 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-import requests_cache
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
@@ -22,7 +21,6 @@ def _run_migrations() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    requests_cache.install_cache("/tmp/yfinance_cache", expire_after=3600)
     await asyncio.to_thread(_run_migrations)
     async with AsyncSessionLocal() as db:
         await bootstrap_stake_token(db)
@@ -34,12 +32,12 @@ async def lifespan(app: FastAPI):
         await close_redis()
 
 
-app = FastAPI(title="Stake Investment Dashboard", lifespan=lifespan)
+app = FastAPI(title="Stake Investment Dashboard", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
 

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-06-03 — v0.2.0
+
+Adds manual stock tracking as the reliable core, fixes the Stake integration, and
+restores live market telemetry (yfinance) that had broken against upstream API changes.
+
+### Manual stock tracking (new core)
+
+- Users can now add/edit/delete holdings (ticker, exchange, quantity, average cost) and watchlist tickers directly from the dashboard — no broker login required. This is the reliable default; Stake sync is now optional and layered on top.
+- New CRUD endpoints in `backend/app/api/holdings.py`: `POST/PATCH/DELETE /api/holdings`, `POST/DELETE /api/watchlist`. Added `HoldingCreate`/`HoldingUpdate`/`WatchlistCreate` schemas.
+- Added a `source` column (`manual`/`stake`) to the `holdings` and `watchlist` tables (migration `0004_manual_source`) so manual entries are visually distinguished and never wiped by a Stake sync.
+- Extracted ticker/exchange normalisation into `backend/app/utils/tickers.py`, shared by the Stake sync and manual paths.
+- Frontend: new **Manage** modal (`ManageAssets`) for CRUD, new **Connect Stake** modal (`StakeConnect`) for pasting a session token, plus a shared `Modal` and `errorMessage` helper. CORS now allows `PATCH`/`DELETE`.
+
+### Stake integration fix
+
+- Root cause: the integration called the `stake==0.13.0` library with an API shape that does not exist (`stake.Stake(session_token=...)`, `cls(username=..., password=...)`, `get_holdings()`/`portfolio()`), so both session-token and credential login always failed. The library was also installed `--no-deps` without its runtime deps, so `import stake` failed outright — now `aiohttp`, `inflection` and `single-version` are pinned in `requirements.txt`.
+- Rewrote `services/stake_client.py` to the real async API: `async with StakeClient(SessionTokenLoginRequest(token=...), exchange=stake.NYSE|stake.ASX)`, reading `session.equities.list()` and `session.watchlist.list_watchlists()`. One session per exchange; per-exchange failures tolerated, raising only if every exchange fails (how an invalid token surfaces).
+- Rewrote credential bootstrap in `services/stake_service.py` to `CredentialsLoginRequest(username, password, otp=...)` (2FA accounts need a live OTP — new `STAKE_OTP` setting). Stopped logging the raw token.
+- Added in-dashboard token onboarding: `POST /api/admin/stake-token` (validates against Stake before persisting) and `GET /api/admin/stake-status`.
+- `POST /api/sync` now returns a clear `400` when Stake isn't configured/valid instead of a `500`; manual data is untouched.
+- Corrected docs: the `Stake-Session-Token` is a **request header** on `api2.prd.hellostake.com` (not a cookie).
+
+### Market data / telemetry fixes
+
+- Upgraded `yfinance` `0.2.50` → `1.4.1`. The pinned `0.2.50` no longer worked against Yahoo's current API and returned empty responses for every ticker (no prices, fundamentals or news).
+- Fixed the live quote: yfinance 1.x exposes camelCase `fast_info` keys (`lastPrice`/`previousClose`); the code read snake_case and returned `None`.
+- Fixed a price-endpoint hang under load: switched `get_price_history` from `yf.download()` (which spawns an internal thread pool that wedged the device when many cards fetched at once) to single-fetch `Ticker.history()`; the scheduler's batch download now runs with `threads=False`.
+- Removed the global `requests_cache` install — yfinance 1.x uses `curl_cffi`, which it does not affect; app-level caching remains in Redis.
+- **FMP**: Financial Modeling Prep retired its legacy v3 endpoints (now returns `403 Legacy Endpoint`). Yahoo Finance is now the recommended data source for fundamentals and news; the runtime data-source toggle still exists for users with a current FMP plan.
+
+### Deployment
+
+- Added `docker/docker-compose.ghcr.yml` to run prebuilt GHCR images without building locally; documented deployment in `README.md`.
+- Fixed the frontend `VITE_API_URL` build arg: it now defaults to empty so the app uses relative `/api` via the bundled nginx proxy (the previous `http://localhost:8000` was baked into the bundle and broke remote/LAN access). Applied to `docker-compose.yml` and the publish workflow.
+- `publish.yml`: the frontend image now also gets the full `{{version}}` tag (e.g. `0.2.0`), matching the backend.
+- Added `version="0.2.0"` to the FastAPI app (shown at `/docs`).
+
 ## 2026-05-27 — v0.1.0
 
 ### Release

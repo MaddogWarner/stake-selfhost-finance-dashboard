@@ -1,8 +1,11 @@
 import clsx from 'clsx';
 import { useMemo, useState } from 'react';
 import FeedCard from '../components/FeedCard';
+import ManageAssets from '../components/ManageAssets';
 import MarketStatusBadge from '../components/MarketStatusBadge';
+import Modal from '../components/Modal';
 import SettingsPanel from '../components/SettingsPanel';
+import StakeConnect from '../components/StakeConnect';
 import { useHoldings, useSyncStake, useUsage, useWatchlist } from '../hooks/useHoldings';
 import type { Exchange, FeedAsset, MarketTab } from '../types';
 
@@ -18,6 +21,7 @@ type KindTab = (typeof kindTabs)[number];
 export default function Dashboard() {
   const [market, setMarket] = useState<MarketTab>('ALL');
   const [kind, setKind] = useState<KindTab>('All');
+  const [modal, setModal] = useState<'manage' | 'stake' | null>(null);
   const exchange = market === 'ALL' ? undefined : (market as Exchange);
   const holdings = useHoldings(exchange);
   const watchlist = useWatchlist(exchange);
@@ -31,11 +35,12 @@ export default function Dashboard() {
       kind: 'holding' as const,
       quantity: item.quantity,
       avg_cost: item.avg_cost,
+      source: item.source,
     }));
     const holdingKeys = new Set(holdingAssets.map((item) => `${item.ticker}:${item.exchange}`));
     const watchlistAssets = (watchlist.data ?? [])
       .filter((item) => !holdingKeys.has(`${item.ticker}:${item.exchange}`))
-      .map((item) => ({ ticker: item.ticker, exchange: item.exchange, kind: 'watchlist' as const }));
+      .map((item) => ({ ticker: item.ticker, exchange: item.exchange, kind: 'watchlist' as const, source: item.source }));
     if (kind === 'Holdings') return holdingAssets;
     if (kind === 'Watchlist') return watchlistAssets;
     return [...holdingAssets, ...watchlistAssets].sort((a, b) => a.ticker.localeCompare(b.ticker));
@@ -57,6 +62,20 @@ export default function Dashboard() {
             <span className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-300">
               API Usage: {usage.data?.fmp?.today ?? 0}
             </span>
+            <button
+              type="button"
+              onClick={() => setModal('manage')}
+              className="rounded bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-white"
+            >
+              Manage
+            </button>
+            <button
+              type="button"
+              onClick={() => setModal('stake')}
+              className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800"
+            >
+              Connect Stake
+            </button>
             <button
               type="button"
               onClick={() => sync.mutate()}
@@ -112,7 +131,8 @@ export default function Dashboard() {
 
         {!assets.length ? (
           <div className="mt-10 rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
-            No holdings or watchlist entries available.
+            Nothing tracked yet. Use <span className="font-semibold text-slate-200">Manage</span> to add holdings or
+            watchlist tickers, or <span className="font-semibold text-slate-200">Connect Stake</span> to sync automatically.
           </div>
         ) : null}
 
@@ -122,6 +142,17 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {modal === 'manage' ? (
+        <Modal title="Manage assets" onClose={() => setModal(null)}>
+          <ManageAssets />
+        </Modal>
+      ) : null}
+      {modal === 'stake' ? (
+        <Modal title="Connect Stake" onClose={() => setModal(null)}>
+          <StakeConnect />
+        </Modal>
+      ) : null}
     </main>
   );
 }

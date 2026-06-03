@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     stake_session_token: str | None = None
     stake_username: str | None = None
     stake_password: str | None = None
+    stake_otp: str | None = None
     fmp_api_key: str | None = None
     database_url: str = "postgresql+asyncpg://stake:stake@db:5432/stake_dashboard"
     redis_url: str = "redis://redis:6379/0"
