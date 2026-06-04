@@ -11,8 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.redis import get_redis
 from app.db.session import get_db
 from app.models.news import News
-from app.services import fmp_service, yfinance_service
-from app.services.settings_service import get_data_source
+from app.services import yfinance_service
 
 router = APIRouter()
 
@@ -40,11 +39,9 @@ async def get_news(
         return json.loads(cached)
 
     selected_exchange = exchange.upper() if exchange else "NYSE"
-    source = await get_data_source(redis, db)
-    if source == "yfinance":
-        items = await yfinance_service.get_news(ticker, selected_exchange, limit=5)
-    else:
-        items = await fmp_service.get_news(db, ticker, limit=5)
+    # News always comes from Yahoo Finance: FMP news is a paid add-on not available on
+    # standard plans, whereas yfinance news is free and reliable.
+    items = await yfinance_service.get_news(ticker, selected_exchange, limit=5)
 
     payload: list[dict] = []
     for item in items:

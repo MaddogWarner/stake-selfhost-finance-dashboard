@@ -54,9 +54,9 @@ If you do want to auto-sync from Stake AU, the dashboard uses the unofficial `st
 
 ### FMP API key (optional)
 
-> **Note:** FMP has retired its legacy v3 endpoints; free-tier and older keys now return `403 Legacy Endpoint`. Unless you have a current FMP plan, leave this unset and use **Yahoo Finance Only** — the recommended data source for fundamentals and news (see [Data source](#data-source)).
+FMP is only used for **fundamentals** (company profile + TTM P/E), and only when the data source is set to an FMP mode. The app uses FMP's current **`stable`** API (the legacy `/api/v3` endpoints were retired in 2026). If FMP is unavailable — no key, daily quota reached, or your plan doesn't include an endpoint — it **falls back to Yahoo Finance automatically**, so fundamentals always render.
 
-Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and copy your key. The free tier historically provided 250 calls/day; the app gates itself at 200 to keep a buffer. With the data source set to **Yahoo Finance Only**, FMP is never called and the key is unused.
+Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and copy your key; the app gates itself at 200 calls/day. **News and prices never use FMP** (FMP news is a paid add-on) — they always come from Yahoo Finance. Leave the key unset to run entirely on Yahoo Finance.
 
 ---
 
@@ -193,17 +193,15 @@ alembic downgrade -1
 
 ## Data source
 
-The dashboard header contains a **Data source** dropdown that controls where fundamentals and news are fetched from. The change takes effect immediately — no restart required. Switching sources flushes the Redis cache for fundamentals and news so cards refetch against the new source on the next load.
+The dashboard header contains a **Data source** dropdown that controls where **fundamentals** are fetched from. **News and price history always come from Yahoo Finance** regardless of this setting. The change takes effect immediately — no restart required — and switching flushes the fundamentals cache.
 
-> **Recommended: Yahoo Finance Only.** FMP retired its legacy v3 endpoints, so the **FMP** and **FMP + Yahoo Finance** modes return errors unless you have a current FMP plan. New installs seed **FMP + Yahoo Finance**; switch to **Yahoo Finance Only** (one click, or via the API below) for working fundamentals and news with no API key.
+| Mode | Fundamentals | News & prices | FMP calls/day |
+| ---- | ------------ | ------------- | ------------- |
+| **Yahoo Finance Only** | Yahoo Finance | Yahoo Finance | 0 |
+| **FMP + Yahoo Finance** (seeded default) | FMP, falls back to Yahoo | Yahoo Finance | Up to 200 |
+| **FMP Only** | FMP, falls back to Yahoo | Yahoo Finance | Up to 200 |
 
-| Mode | Fundamentals & news | FMP calls/day |
-| ---- | ------------------- | ------------- |
-| **Yahoo Finance Only** (recommended) | Yahoo Finance (yfinance) | 0 |
-| **FMP + Yahoo Finance** (seeded default) | FMP (needs current plan) | Up to 200 |
-| **FMP Only** | FMP (needs current plan) | Up to 200 |
-
-Prices and price history always come from Yahoo Finance regardless of this setting.
+FMP uses the current **`stable`** API and, with a valid key, returns the company profile and TTM P/E. If FMP can't be reached (no key, quota, or plan restriction) the dashboard falls back to Yahoo Finance automatically. **Yahoo Finance Only** needs no API key.
 
 The setting is stored in the database and persists across restarts. You can also read or update it via the API:
 

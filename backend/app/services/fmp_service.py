@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.services import rate_limiter
 
-BASE_URL = "https://financialmodelingprep.com/api/v3"
+# FMP retired the legacy /api/v3 endpoints in 2026; this uses the current "stable" API.
+# Stable endpoints take the symbol as a query param (?symbol=) rather than a path segment.
+BASE_URL = "https://financialmodelingprep.com/stable"
 
 
 async def _get(db: AsyncSession, path: str, params: dict | None = None) -> object:
@@ -25,20 +27,10 @@ async def _get(db: AsyncSession, path: str, params: dict | None = None) -> objec
 
 
 async def get_company_profile(db: AsyncSession, ticker: str) -> dict:
-    data = await _get(db, f"/profile/{ticker.upper()}")
+    data = await _get(db, "/profile", {"symbol": ticker.upper()})
     return data[0] if isinstance(data, list) and data else {}
 
 
 async def get_financial_ratios(db: AsyncSession, ticker: str) -> dict:
-    data = await _get(db, f"/ratios-ttm/{ticker.upper()}")
+    data = await _get(db, "/ratios-ttm", {"symbol": ticker.upper()})
     return data[0] if isinstance(data, list) and data else {}
-
-
-async def get_income_statement(db: AsyncSession, ticker: str) -> list[dict]:
-    data = await _get(db, f"/income-statement/{ticker.upper()}", {"limit": 5})
-    return data if isinstance(data, list) else []
-
-
-async def get_news(db: AsyncSession, ticker: str, limit: int = 5) -> list[dict]:
-    data = await _get(db, "/stock_news", {"tickers": ticker.upper(), "limit": limit})
-    return data if isinstance(data, list) else []

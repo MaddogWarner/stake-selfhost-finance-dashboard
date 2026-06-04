@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-04 — v0.2.1
+
+### FMP migrated to the new "stable" API
+
+- FMP retired its legacy `/api/v3` endpoints (now `403 Legacy Endpoint`). Rewrote `services/fmp_service.py` to FMP's current **`stable`** API (`/stable/profile`, `/stable/ratios-ttm`, symbol passed as a query param) with the new field names (`marketCap`, `priceToEarningsRatioTTM`).
+- Fundamentals now **fall back to Yahoo Finance automatically** when FMP is unavailable (no key, daily quota reached, or plan restriction), so cards always render.
+- **News always uses Yahoo Finance.** FMP news is a paid add-on (`402 Restricted` on standard plans), so the data-source toggle now controls **fundamentals only**; removed the FMP news path from the API (`api/news.py`) and scheduler (`scheduler/jobs.py`).
+- Dropped the unused FMP income-statement call from the financials job (saves one FMP call per ticker per refresh).
+- App version → `0.2.1`.
+
 ## 2026-06-03 — v0.2.0
 
 Adds manual stock tracking as the reliable core, fixes the Stake integration, and

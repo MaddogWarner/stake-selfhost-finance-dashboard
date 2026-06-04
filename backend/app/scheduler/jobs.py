@@ -105,6 +105,7 @@ async def refresh_fundamentals() -> None:
             else:
                 try:
                     profile = await fmp_service.get_company_profile(db, ticker)
+                    ratios = await fmp_service.get_financial_ratios(db, ticker)
                 except HTTPException as exc:
                     if exc.status_code == 429:
                         break
@@ -118,8 +119,8 @@ async def refresh_fundamentals() -> None:
                     sector=profile.get("sector"),
                     industry=profile.get("industry"),
                     description=profile.get("description"),
-                    market_cap=profile.get("mktCap"),
-                    pe_ratio=profile.get("pe"),
+                    market_cap=profile.get("marketCap"),
+                    pe_ratio=ratios.get("priceToEarningsRatioTTM"),
                 )
             db.add(row)
         await db.commit()
@@ -128,17 +129,9 @@ async def refresh_fundamentals() -> None:
 async def refresh_news() -> None:
     tickers = await _unique_tickers()
     async with AsyncSessionLocal() as db:
-        source = await get_data_source(redis_client, db)
         for ticker, exchange in tickers:
-            if source == "yfinance":
-                items = await yfinance_service.get_news(ticker, exchange, limit=3)
-            else:
-                try:
-                    items = await fmp_service.get_news(db, ticker, limit=3)
-                except HTTPException as exc:
-                    if exc.status_code == 429:
-                        break
-                    raise
+            # News always comes from Yahoo Finance (FMP news is a gated paid add-on).
+            items = await yfinance_service.get_news(ticker, exchange, limit=3)
             for item in items:
                 headline = item.get("headline") or item.get("title")
                 if not headline:
@@ -167,7 +160,6 @@ async def refresh_financials() -> None:
             try:
                 profile = await fmp_service.get_company_profile(db, ticker)
                 ratios = await fmp_service.get_financial_ratios(db, ticker)
-                await fmp_service.get_income_statement(db, ticker)
             except HTTPException as exc:
                 if exc.status_code == 429:
                     break
@@ -179,8 +171,8 @@ async def refresh_financials() -> None:
                 "sector": profile.get("sector"),
                 "industry": profile.get("industry"),
                 "description": profile.get("description"),
-                "market_cap": profile.get("mktCap"),
-                "pe_ratio": ratios.get("peRatioTTM") or profile.get("pe"),
+                "market_cap": profile.get("marketCap"),
+                "pe_ratio": ratios.get("priceToEarningsRatioTTM"),
             }
             stmt = insert(CompanyProfile).values(**payload)
             stmt = stmt.on_conflict_do_update(
