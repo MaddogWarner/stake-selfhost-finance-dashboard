@@ -12,6 +12,13 @@ function formatMoney(value: number | null | undefined, currency: string | null |
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: currency || 'AUD', maximumFractionDigits: 2 }).format(value);
 }
 
+function formatPe(value: number | string | null | undefined) {
+  if (value === null || value === undefined) return '-';
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num)) return '-';
+  return num.toFixed(2);
+}
+
 function formatMarketCap(value: number | null | undefined) {
   if (!value) return '-';
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
@@ -74,7 +81,7 @@ export default function FeedCard({ asset }: { asset: FeedAsset }) {
       <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
         <div className="rounded bg-slate-800 p-2">
           <div className="text-xs text-slate-500">P/E</div>
-          <div className="font-semibold text-slate-100">{profile?.pe_ratio ?? '-'}</div>
+          <div className="font-semibold text-slate-100">{formatPe(profile?.pe_ratio)}</div>
         </div>
         <div className="rounded bg-slate-800 p-2">
           <div className="text-xs text-slate-500">Market Cap</div>

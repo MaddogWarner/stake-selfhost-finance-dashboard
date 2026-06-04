@@ -16,6 +16,7 @@ Read-only — no trade placement.
 - Company fundamentals: P/E ratio, market cap, sector
 - Latest news headlines per ticker (cached 1 hour)
 - Runtime data source selector — switch between FMP, Yahoo Finance, or both from the dashboard header without restarting Docker
+- Configurable auto-refresh (off / 1 / 2 / 5 min) plus a manual refresh button with success confirmation
 - Market open/closed badge per exchange (DST-aware)
 - FMP daily call gate (hard limit: 200 calls/day); use Yahoo Finance mode to run with zero FMP quota
 - Redis caching throughout; PostgreSQL persistence

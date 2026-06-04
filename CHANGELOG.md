@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-04 — v0.3.0
+
+### Dashboard refresh controls + P/E formatting
+
+- **Configurable auto-refresh.** The price refetch interval is no longer hardcoded at 5 minutes. New header control (`components/RefreshControls.tsx`) lets you pick **Off / 1 min / 2 min / 5 min**; the choice is held in a small React context (`hooks/useRefresh.tsx`) that `usePrices` reads for its `refetchInterval`. Defaults to 5 minutes to match the backend price cache TTL. Auto-refresh drives **prices only** — fundamentals are left alone to protect the FMP daily quota.
+- **Manual refresh button.** Invalidates the price and news queries on demand, shows a "Refreshing" state while in flight, and surfaces a transient **"Refresh successful"** tile (auto-dismisses after 3s) once the refetch resolves. The confirmation appears only on a manual click, not on the auto-refresh interval.
+- **P/E ratio formatting fix.** Card P/E was rendering the raw value (e.g. `32.67539924692…`) and overflowing its tile. Now formatted to 2 decimals via a `formatPe` helper that parses the `number | string` value and guards against null/NaN (`components/FeedCard.tsx`).
+- App version → `0.3.0`.
+
 ## 2026-06-04 — v0.2.1
 
 ### FMP migrated to the new "stable" API

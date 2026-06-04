@@ -4,6 +4,7 @@ import FeedCard from '../components/FeedCard';
 import ManageAssets from '../components/ManageAssets';
 import MarketStatusBadge from '../components/MarketStatusBadge';
 import Modal from '../components/Modal';
+import RefreshControls from '../components/RefreshControls';
 import SettingsPanel from '../components/SettingsPanel';
 import StakeConnect from '../components/StakeConnect';
 import { useHoldings, useSyncStake, useUsage, useWatchlist } from '../hooks/useHoldings';
@@ -59,6 +60,7 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <SettingsPanel />
+            <RefreshControls />
             <span className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-300">
               API Usage: {usage.data?.fmp?.today ?? 0}
             </span>
