@@ -9,7 +9,7 @@ redis[hiredis]==5.2.0
 apscheduler==3.10.4
 yfinance==1.4.1
 requests-cache==1.2.1
-httpx==0.28.0
+httpx==0.28.1
 python-dotenv==1.0.1
 
 # Runtime deps of stake==0.13.0 (installed with --no-deps in the Dockerfile to bypass
