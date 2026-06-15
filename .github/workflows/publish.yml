@@ -14,6 +14,7 @@ on:
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 jobs:
   backend:
@@ -41,7 +42,8 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
-      - uses: docker/build-push-action@v5
+      - id: push
+        uses: docker/build-push-action@v5
         with:
           context: ./backend
           platforms: linux/amd64,linux/arm64
@@ -50,6 +52,23 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+
+      - name: Trivy scan — backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ghcr.io/${{ github.repository }}/backend@${{ steps.push.outputs.digest }}
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy results — backend
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-backend.sarif
+          category: container-backend
 
   frontend:
     runs-on: ubuntu-latest
@@ -76,7 +95,8 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
-      - uses: docker/build-push-action@v5
+      - id: push
+        uses: docker/build-push-action@v5
         with:
           context: ./frontend
           platforms: linux/amd64,linux/arm64
@@ -87,3 +107,20 @@ jobs:
             VITE_API_URL=${{ inputs.vite_api_url }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Trivy scan — frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ghcr.io/${{ github.repository }}/frontend@${{ steps.push.outputs.digest }}
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy results — frontend
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: container-frontend
