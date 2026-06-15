@@ -46,7 +46,9 @@ async def get_news(
     payload: list[dict] = []
     for item in items:
         headline = item.get("headline") or item.get("title") or ""
-        published_at = item.get("published_at") or _parse_datetime(item.get("publishedDate"))
+        published_at = item.get("published_at") or _parse_datetime(
+            item.get("publishedDate")
+        )
         if headline:
             stmt = insert(News).values(
                 ticker=ticker,

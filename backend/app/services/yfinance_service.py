@@ -65,9 +65,15 @@ async def get_live_quote(ticker: str, exchange: str) -> dict[str, Any]:
         # yfinance 1.x exposes camelCase fast_info keys (lastPrice/previousClose);
         # keep snake_case fallbacks for older versions.
         price = _clean_float(info.get("lastPrice") or info.get("last_price"))
-        prev_close = _clean_float(info.get("previousClose") or info.get("previous_close"))
-        change = price - prev_close if price is not None and prev_close is not None else None
-        change_pct = (change / prev_close * 100) if change is not None and prev_close else None
+        prev_close = _clean_float(
+            info.get("previousClose") or info.get("previous_close")
+        )
+        change = (
+            price - prev_close if price is not None and prev_close is not None else None
+        )
+        change_pct = (
+            (change / prev_close * 100) if change is not None and prev_close else None
+        )
         return {
             "ticker": ticker.upper(),
             "exchange": exchange.upper(),
@@ -105,22 +111,32 @@ async def get_news(ticker: str, exchange: str, limit: int = 5) -> list[dict[str,
         items = yf.Ticker(symbol).news or []
         result: list[dict[str, Any]] = []
         for item in items[:limit]:
-            content = item.get("content") if isinstance(item.get("content"), dict) else {}
-            provider = content.get("provider") if isinstance(content.get("provider"), dict) else {}
+            content = (
+                item.get("content") if isinstance(item.get("content"), dict) else {}
+            )
+            provider = (
+                content.get("provider")
+                if isinstance(content.get("provider"), dict)
+                else {}
+            )
             published = item.get("providerPublishTime") or content.get("pubDate")
             published_at = None
             if isinstance(published, (int, float)):
                 published_at = datetime.fromtimestamp(published, tz=timezone.utc)
             elif isinstance(published, str):
                 try:
-                    published_at = datetime.fromisoformat(published.replace("Z", "+00:00"))
+                    published_at = datetime.fromisoformat(
+                        published.replace("Z", "+00:00")
+                    )
                 except ValueError:
                     published_at = None
             result.append(
                 {
                     "headline": item.get("title") or content.get("title"),
                     "source": item.get("publisher") or provider.get("displayName"),
-                    "url": item.get("link") or _nested_url(content.get("clickThroughUrl")) or _nested_url(content.get("canonicalUrl")),
+                    "url": item.get("link")
+                    or _nested_url(content.get("clickThroughUrl"))
+                    or _nested_url(content.get("canonicalUrl")),
                     "published_at": published_at,
                 }
             )
@@ -129,17 +145,33 @@ async def get_news(ticker: str, exchange: str, limit: int = 5) -> list[dict[str,
     return await asyncio.to_thread(_fetch)
 
 
-async def download_batch_history(tickers: list[tuple[str, str]], period: str = "1y") -> dict[str, list[dict[str, Any]]]:
-    grouped = [(ticker, exchange, normalise_ticker(ticker, exchange)) for ticker, exchange in tickers]
+async def download_batch_history(
+    tickers: list[tuple[str, str]], period: str = "1y"
+) -> dict[str, list[dict[str, Any]]]:
+    grouped = [
+        (ticker, exchange, normalise_ticker(ticker, exchange))
+        for ticker, exchange in tickers
+    ]
     if not grouped:
         return {}
 
     def _download() -> dict[str, list[dict[str, Any]]]:
         symbols = [item[2] for item in grouped]
-        frame = yf.download(symbols, period=period, auto_adjust=True, progress=False, group_by="ticker", threads=False)
+        frame = yf.download(
+            symbols,
+            period=period,
+            auto_adjust=True,
+            progress=False,
+            group_by="ticker",
+            threads=False,
+        )
         data: dict[str, list[dict[str, Any]]] = {}
         for ticker, exchange, symbol in grouped:
-            source = frame[symbol] if len(symbols) > 1 and symbol in frame.columns.get_level_values(0) else frame
+            source = (
+                frame[symbol]
+                if len(symbols) > 1 and symbol in frame.columns.get_level_values(0)
+                else frame
+            )
             rows: list[dict[str, Any]] = []
             if source.empty:
                 data[f"{ticker}:{exchange}"] = rows

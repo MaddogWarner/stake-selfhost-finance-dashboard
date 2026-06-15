@@ -44,7 +44,9 @@ async def sync_stake_data(db: AsyncSession) -> None:
 
     for item in watchlist:
         stmt = insert(Watchlist).values(**item, source="stake")
-        stmt = stmt.on_conflict_do_nothing(index_elements=[Watchlist.ticker, Watchlist.exchange])
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=[Watchlist.ticker, Watchlist.exchange]
+        )
         await db.execute(stmt)
 
     await db.commit()
@@ -72,7 +74,9 @@ async def list_holdings(
 
 
 @router.post("/holdings", response_model=HoldingRead, status_code=201)
-async def create_holding(payload: HoldingCreate, db: AsyncSession = Depends(get_db)) -> Holding:
+async def create_holding(
+    payload: HoldingCreate, db: AsyncSession = Depends(get_db)
+) -> Holding:
     ticker = normalise_ticker(payload.ticker, payload.exchange)
     stmt = insert(Holding).values(
         ticker=ticker,
@@ -94,7 +98,9 @@ async def create_holding(payload: HoldingCreate, db: AsyncSession = Depends(get_
     await db.commit()
     row = (
         await db.execute(
-            select(Holding).where(Holding.ticker == ticker, Holding.exchange == payload.exchange)
+            select(Holding).where(
+                Holding.ticker == ticker, Holding.exchange == payload.exchange
+            )
         )
     ).scalar_one()
     return row
@@ -117,7 +123,9 @@ async def update_holding(
 
 
 @router.delete("/holdings/{holding_id}")
-async def delete_holding(holding_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, bool]:
+async def delete_holding(
+    holding_id: int, db: AsyncSession = Depends(get_db)
+) -> dict[str, bool]:
     result = await db.execute(delete(Holding).where(Holding.id == holding_id))
     await db.commit()
     if result.rowcount == 0:
@@ -137,10 +145,16 @@ async def list_watchlist(
 
 
 @router.post("/watchlist", response_model=WatchlistRead, status_code=201)
-async def create_watchlist(payload: WatchlistCreate, db: AsyncSession = Depends(get_db)) -> Watchlist:
+async def create_watchlist(
+    payload: WatchlistCreate, db: AsyncSession = Depends(get_db)
+) -> Watchlist:
     ticker = normalise_ticker(payload.ticker, payload.exchange)
-    stmt = insert(Watchlist).values(ticker=ticker, exchange=payload.exchange, source="manual")
-    stmt = stmt.on_conflict_do_nothing(index_elements=[Watchlist.ticker, Watchlist.exchange])
+    stmt = insert(Watchlist).values(
+        ticker=ticker, exchange=payload.exchange, source="manual"
+    )
+    stmt = stmt.on_conflict_do_nothing(
+        index_elements=[Watchlist.ticker, Watchlist.exchange]
+    )
     await db.execute(stmt)
     await db.commit()
     row = (
@@ -154,7 +168,9 @@ async def create_watchlist(payload: WatchlistCreate, db: AsyncSession = Depends(
 
 
 @router.delete("/watchlist/{watchlist_id}")
-async def delete_watchlist(watchlist_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, bool]:
+async def delete_watchlist(
+    watchlist_id: int, db: AsyncSession = Depends(get_db)
+) -> dict[str, bool]:
     result = await db.execute(delete(Watchlist).where(Watchlist.id == watchlist_id))
     await db.commit()
     if result.rowcount == 0:

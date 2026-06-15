@@ -4,6 +4,7 @@ Revision ID: 0004_manual_source
 Revises: 0003_app_settings
 Create Date: 2026-06-03
 """
+
 from typing import Sequence, Union
 
 from alembic import op

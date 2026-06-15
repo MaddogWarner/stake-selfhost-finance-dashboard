@@ -19,4 +19,6 @@ class CompanyProfile(Base):
     description: Mapped[str | None] = mapped_column(Text)
     market_cap: Mapped[int | None] = mapped_column(BigInteger)
     pe_ratio: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
-    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

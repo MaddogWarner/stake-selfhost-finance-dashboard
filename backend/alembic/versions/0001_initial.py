@@ -4,6 +4,7 @@ Revision ID: 0001_initial
 Revises:
 Create Date: 2026-05-26
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -23,7 +24,12 @@ def upgrade() -> None:
         sa.Column("exchange", sa.String(length=10), nullable=False),
         sa.Column("quantity", sa.Numeric(18, 6), nullable=False),
         sa.Column("avg_cost", sa.Numeric(18, 6), nullable=True),
-        sa.Column("last_synced_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "last_synced_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.UniqueConstraint("ticker", "exchange", name="uq_holdings_ticker_exchange"),
     )
     op.create_table(
@@ -31,7 +37,12 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("ticker", sa.String(length=20), nullable=False),
         sa.Column("exchange", sa.String(length=10), nullable=False),
-        sa.Column("added_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "added_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.UniqueConstraint("ticker", "exchange", name="uq_watchlist_ticker_exchange"),
     )
     op.create_table(
@@ -45,7 +56,12 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("market_cap", sa.BigInteger(), nullable=True),
         sa.Column("pe_ratio", sa.Numeric(10, 4), nullable=True),
-        sa.Column("fetched_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "fetched_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_table(
         "price_history",
@@ -67,15 +83,27 @@ def upgrade() -> None:
         sa.Column("source", sa.Text(), nullable=True),
         sa.Column("url", sa.Text(), nullable=True),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("fetched_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "fetched_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.create_table(
         "api_usage",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("provider", sa.String(length=20), nullable=False),
-        sa.Column("date", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False),
+        sa.Column(
+            "date", sa.Date(), server_default=sa.text("CURRENT_DATE"), nullable=False
+        ),
         sa.Column("call_count", sa.Integer(), server_default="0", nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.UniqueConstraint("provider", "date", name="uq_api_usage_provider_date"),
     )
 

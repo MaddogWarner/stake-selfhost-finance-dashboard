@@ -25,8 +25,12 @@ NEW_YORK = ZoneInfo("America/New_York")
 async def _unique_tickers() -> list[tuple[str, str]]:
     async with AsyncSessionLocal() as db:
         holdings = (await db.execute(select(Holding.ticker, Holding.exchange))).all()
-        watchlist = (await db.execute(select(Watchlist.ticker, Watchlist.exchange))).all()
-    return sorted(set((ticker, exchange) for ticker, exchange in [*holdings, *watchlist]))
+        watchlist = (
+            await db.execute(select(Watchlist.ticker, Watchlist.exchange))
+        ).all()
+    return sorted(
+        set((ticker, exchange) for ticker, exchange in [*holdings, *watchlist])
+    )
 
 
 def is_asx_open(now_utc: datetime | None = None) -> bool:
@@ -60,9 +64,13 @@ async def refresh_prices() -> None:
         return
 
     tickers = [
-        item for item in await _unique_tickers() if (item[1] == "ASX" and asx_open) or (item[1] == "NYSE" and nyse_open)
+        item
+        for item in await _unique_tickers()
+        if (item[1] == "ASX" and asx_open) or (item[1] == "NYSE" and nyse_open)
     ]
-    history_by_ticker = await yfinance_service.download_batch_history(tickers, period="1y")
+    history_by_ticker = await yfinance_service.download_batch_history(
+        tickers, period="1y"
+    )
     async with AsyncSessionLocal() as db:
         for ticker, exchange in tickers:
             for point in history_by_ticker.get(f"{ticker}:{exchange}", []):
@@ -86,7 +94,9 @@ async def refresh_fundamentals() -> None:
     tickers = await _unique_tickers()
     async with AsyncSessionLocal() as db:
         source = await get_data_source(redis_client, db)
-        existing = set((await db.execute(select(CompanyProfile.ticker))).scalars().all())
+        existing = set(
+            (await db.execute(select(CompanyProfile.ticker))).scalars().all()
+        )
         for ticker, exchange in tickers:
             if ticker in existing:
                 continue
@@ -136,7 +146,9 @@ async def refresh_news() -> None:
                 headline = item.get("headline") or item.get("title")
                 if not headline:
                     continue
-                published_at = item.get("published_at") or _parse_datetime(item.get("publishedDate"))
+                published_at = item.get("published_at") or _parse_datetime(
+                    item.get("publishedDate")
+                )
                 stmt = insert(News).values(
                     ticker=ticker,
                     headline=headline,
@@ -144,7 +156,9 @@ async def refresh_news() -> None:
                     url=item.get("url"),
                     published_at=published_at,
                 )
-                stmt = stmt.on_conflict_do_nothing(index_elements=[News.ticker, News.url])
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=[News.ticker, News.url]
+                )
                 await db.execute(stmt)
             await redis_client.delete(f"news:{ticker}")
         await db.commit()
@@ -177,7 +191,11 @@ async def refresh_financials() -> None:
             stmt = insert(CompanyProfile).values(**payload)
             stmt = stmt.on_conflict_do_update(
                 index_elements=[CompanyProfile.ticker],
-                set_={key: getattr(stmt.excluded, key) for key in payload if key != "ticker"},
+                set_={
+                    key: getattr(stmt.excluded, key)
+                    for key in payload
+                    if key != "ticker"
+                },
             )
             await db.execute(stmt)
             await redis_client.delete(f"fundamentals:{ticker}", f"profile:{ticker}")

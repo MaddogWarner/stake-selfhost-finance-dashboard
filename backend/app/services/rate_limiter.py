@@ -11,7 +11,9 @@ FMP_DAILY_LIMIT = 200
 
 async def can_call_fmp(db: AsyncSession) -> bool:
     result = await db.execute(
-        select(ApiUsage.call_count).where(ApiUsage.provider == "fmp", ApiUsage.date == date.today())
+        select(ApiUsage.call_count).where(
+            ApiUsage.provider == "fmp", ApiUsage.date == date.today()
+        )
     )
     count = result.scalar_one_or_none() or 0
     return count < FMP_DAILY_LIMIT

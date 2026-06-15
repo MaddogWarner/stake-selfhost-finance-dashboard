@@ -4,6 +4,7 @@ Revision ID: 0003_app_settings
 Revises: 0002_news_unique_ticker_url
 Create Date: 2026-05-26
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,7 +21,12 @@ def upgrade() -> None:
         "app_settings",
         sa.Column("key", sa.String(100), primary_key=True),
         sa.Column("value", sa.Text(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.execute("INSERT INTO app_settings (key, value) VALUES ('data_source', 'both')")
 

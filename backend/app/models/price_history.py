@@ -9,7 +9,9 @@ from app.models import Base
 
 class PriceHistory(Base):
     __tablename__ = "price_history"
-    __table_args__ = (UniqueConstraint("ticker", "date", name="uq_price_history_ticker_date"),)
+    __table_args__ = (
+        UniqueConstraint("ticker", "date", name="uq_price_history_ticker_date"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     ticker: Mapped[str] = mapped_column(String(20), nullable=False)
