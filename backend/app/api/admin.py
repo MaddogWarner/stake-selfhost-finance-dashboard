@@ -44,10 +44,18 @@ class StakeStatus(BaseModel):
 async def get_usage(db: AsyncSession = Depends(get_db)) -> dict:
     count = (
         await db.execute(
-            select(ApiUsage.call_count).where(ApiUsage.provider == "fmp", ApiUsage.date == date.today())
+            select(ApiUsage.call_count).where(
+                ApiUsage.provider == "fmp", ApiUsage.date == date.today()
+            )
         )
     ).scalar_one_or_none() or 0
-    return {"fmp": {"today": count, "limit": FMP_DAILY_LIMIT, "remaining": max(FMP_DAILY_LIMIT - count, 0)}}
+    return {
+        "fmp": {
+            "today": count,
+            "limit": FMP_DAILY_LIMIT,
+            "remaining": max(FMP_DAILY_LIMIT - count, 0),
+        }
+    }
 
 
 @router.get("/admin/settings", response_model=AppSettingsRead)
@@ -66,13 +74,17 @@ async def update_settings(
 ) -> dict[str, str]:
     data_source = settings.data_source.lower()
     if data_source not in VALID_SOURCES:
-        raise HTTPException(status_code=422, detail="data_source must be one of: both, fmp, yfinance")
+        raise HTTPException(
+            status_code=422, detail="data_source must be one of: both, fmp, yfinance"
+        )
     return {"data_source": await set_data_source(redis, db, data_source)}
 
 
 @router.get("/admin/stake-status", response_model=StakeStatus)
 async def stake_status(db: AsyncSession = Depends(get_db)) -> StakeStatus:
-    last_sync = (await db.execute(select(func.max(Holding.last_synced_at)))).scalar_one_or_none()
+    last_sync = (
+        await db.execute(select(func.max(Holding.last_synced_at)))
+    ).scalar_one_or_none()
     return StakeStatus(configured=get_cached_token() is not None, last_sync=last_sync)
 
 
@@ -92,5 +104,7 @@ async def set_stake_token_endpoint(
 
     await set_stake_token(db, token)
     set_cached_token(token)
-    last_sync = (await db.execute(select(func.max(Holding.last_synced_at)))).scalar_one_or_none()
+    last_sync = (
+        await db.execute(select(func.max(Holding.last_synced_at)))
+    ).scalar_one_or_none()
     return StakeStatus(configured=True, last_sync=last_sync)

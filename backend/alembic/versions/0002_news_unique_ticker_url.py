@@ -4,6 +4,7 @@ Revision ID: 0002_news_unique_ticker_url
 Revises: 0001_initial
 Create Date: 2026-05-26
 """
+
 from typing import Sequence, Union
 
 from alembic import op

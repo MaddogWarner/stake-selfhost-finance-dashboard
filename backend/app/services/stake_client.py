@@ -100,7 +100,8 @@ async def get_holdings() -> list[dict[str, Any]]:
                                 _attr(row, "open_qty", "openQty", "quantity", "units")
                             ),
                             "avg_cost": _extract_decimal(
-                                _attr(row, "average_price", "avgPrice", "averagePrice"), "0"
+                                _attr(row, "average_price", "avgPrice", "averagePrice"),
+                                "0",
                             ),
                         }
                     )
@@ -131,7 +132,9 @@ async def get_watchlist() -> list[dict[str, str]]:
                 for wl in lists or []:
                     instruments = _attr(wl, "instruments") or []
                     if not instruments:
-                        instruments = await _fetch_watchlist_instruments(stake, session, wl)
+                        instruments = await _fetch_watchlist_instruments(
+                            stake, session, wl
+                        )
                     for inst in instruments:
                         symbol = _attr(inst, "symbol", "ticker")
                         if not symbol:

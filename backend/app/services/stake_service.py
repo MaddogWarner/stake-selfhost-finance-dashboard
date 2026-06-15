@@ -42,10 +42,14 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
     # works at the instant a fresh STAKE_OTP is supplied. The dashboard "Connect Stake"
     # paste-token flow is the primary path.
     if not (settings.stake_username and settings.stake_password):
-        logger.warning("No Stake credentials configured. Sync will fail until a token is provided.")
+        logger.warning(
+            "No Stake credentials configured. Sync will fail until a token is provided."
+        )
         return
 
-    logger.info("No session token found; authenticating with STAKE_USERNAME/STAKE_PASSWORD.")
+    logger.info(
+        "No session token found; authenticating with STAKE_USERNAME/STAKE_PASSWORD."
+    )
     try:
         token = await _authenticate(
             settings.stake_username, settings.stake_password, settings.stake_otp
@@ -76,13 +80,17 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
     )
 
 
-async def _authenticate(username: str, password: str, otp: str | None = None) -> str | None:
+async def _authenticate(
+    username: str, password: str, otp: str | None = None
+) -> str | None:
     try:
         import stake  # type: ignore
     except ImportError as exc:
         raise RuntimeError("stake-python is not installed") from exc
 
-    request: Any = stake.CredentialsLoginRequest(username=username, password=password, otp=otp)
+    request: Any = stake.CredentialsLoginRequest(
+        username=username, password=password, otp=otp
+    )
     async with stake.StakeClient(request) as session:
         headers = getattr(session, "headers", None)
         token = getattr(headers, "stake_session_token", None) if headers else None

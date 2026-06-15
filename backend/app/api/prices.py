@@ -59,16 +59,22 @@ async def get_price(
         await db.commit()
     else:
         rows = (
-            await db.execute(
-                select(PriceHistory)
-                .where(PriceHistory.ticker == ticker)
-                .order_by(PriceHistory.date.desc())
-                .limit(365)
+            (
+                await db.execute(
+                    select(PriceHistory)
+                    .where(PriceHistory.ticker == ticker)
+                    .order_by(PriceHistory.date.desc())
+                    .limit(365)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         history = [
             {
-                "date": row.date.isoformat() if isinstance(row.date, date) else row.date,
+                "date": row.date.isoformat()
+                if isinstance(row.date, date)
+                else row.date,
                 "open": float(row.open) if row.open is not None else None,
                 "high": float(row.high) if row.high is not None else None,
                 "low": float(row.low) if row.low is not None else None,

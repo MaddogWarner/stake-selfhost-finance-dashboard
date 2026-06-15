@@ -10,7 +10,9 @@ SETTINGS_REDIS_KEY = "settings:data_source"
 
 
 async def get_stake_token(db: AsyncSession) -> str | None:
-    result = await db.execute(select(AppSetting.value).where(AppSetting.key == "stake_session_token"))
+    result = await db.execute(
+        select(AppSetting.value).where(AppSetting.key == "stake_session_token")
+    )
     return result.scalar_one_or_none()
 
 
@@ -29,7 +31,9 @@ async def get_data_source(redis: Redis, db: AsyncSession) -> str:
     if cached in VALID_SOURCES:
         return cached
 
-    result = await db.execute(select(AppSetting.value).where(AppSetting.key == "data_source"))
+    result = await db.execute(
+        select(AppSetting.value).where(AppSetting.key == "data_source")
+    )
     value = result.scalar_one_or_none() or "both"
     if value not in VALID_SOURCES:
         value = "both"
