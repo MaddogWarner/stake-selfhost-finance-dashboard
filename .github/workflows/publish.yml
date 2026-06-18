@@ -43,7 +43,7 @@ jobs:
             type=sha,prefix=sha-,format=short
 
       - id: push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           platforms: linux/amd64,linux/arm64
@@ -96,7 +96,7 @@ jobs:
             type=sha,prefix=sha-,format=short
 
       - id: push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           platforms: linux/amd64,linux/arm64
