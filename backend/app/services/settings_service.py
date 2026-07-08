@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -23,7 +25,54 @@ async def set_stake_token(db: AsyncSession, token: str) -> None:
         set_={"value": stmt.excluded.value, "updated_at": func.now()},
     )
     await db.execute(stmt)
+    await set_stake_token_meta(db)
     await db.commit()
+
+
+async def set_stake_token_meta(db: AsyncSession) -> None:
+    saved_at = datetime.now(timezone.utc).isoformat()
+    saved_stmt = insert(AppSetting).values(key="stake_token_saved_at", value=saved_at)
+    saved_stmt = saved_stmt.on_conflict_do_update(
+        index_elements=[AppSetting.key],
+        set_={"value": saved_stmt.excluded.value, "updated_at": func.now()},
+    )
+    await db.execute(saved_stmt)
+    invalid_stmt = insert(AppSetting).values(key="stake_token_invalid", value="false")
+    invalid_stmt = invalid_stmt.on_conflict_do_update(
+        index_elements=[AppSetting.key],
+        set_={"value": "false", "updated_at": func.now()},
+    )
+    await db.execute(invalid_stmt)
+
+
+async def mark_stake_token_invalid(db: AsyncSession) -> None:
+    stmt = insert(AppSetting).values(key="stake_token_invalid", value="true")
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[AppSetting.key],
+        set_={"value": "true", "updated_at": func.now()},
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+
+async def get_stake_token_meta(db: AsyncSession) -> tuple[datetime | None, bool]:
+    result = await db.execute(
+        select(AppSetting.key, AppSetting.value).where(
+            AppSetting.key.in_(("stake_token_saved_at", "stake_token_invalid"))
+        )
+    )
+    values = dict(result.all())
+    saved_at = None
+    raw_saved_at = values.get("stake_token_saved_at")
+    if raw_saved_at:
+        try:
+            saved_at = datetime.fromisoformat(raw_saved_at.replace("Z", "+00:00"))
+            if saved_at.tzinfo is None:
+                saved_at = saved_at.replace(tzinfo=timezone.utc)
+        except ValueError:
+            saved_at = None
+    invalid = values.get("stake_token_invalid") == "true"
+    return saved_at, invalid
 
 
 async def get_data_source(redis: Redis, db: AsyncSession) -> str:

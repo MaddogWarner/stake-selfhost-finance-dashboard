@@ -3,6 +3,7 @@ export type MarketTab = Exchange | 'ALL';
 export type AssetKind = 'holding' | 'watchlist';
 export type DataSource = 'fmp' | 'yfinance' | 'both';
 export type AssetSource = 'manual' | 'stake';
+export type StakeTokenState = 'none' | 'ok' | 'expiring_soon' | 'expired';
 
 export interface Holding {
   id: number;
@@ -42,6 +43,14 @@ export interface WatchlistCreate {
 export interface StakeStatus {
   configured: boolean;
   last_sync: string | null;
+  token_saved_at: string | null;
+  token_state: StakeTokenState;
+}
+
+export interface StakeLoginPayload {
+  username: string;
+  password: string;
+  otp?: string;
 }
 
 export interface PricePoint {
