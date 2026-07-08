@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-08 — v0.4.0
+
+### Stake auth lifecycle
+
+- Added request-time Stake credential login via `POST /api/admin/stake-login`. Username, password, and OTP are used only for the login call; only the returned session token is persisted.
+- Changed token bootstrap priority so a DB-persisted token wins over a stale `STAKE_SESSION_TOKEN` env value on restart, with an info log when the env value is ignored.
+- Added token health metadata in `app_settings` (`stake_token_saved_at`, `stake_token_invalid`) and surfaced `token_state` through `/api/admin/stake-status`.
+- Marked tokens invalid when Stake sync fails across all exchanges, without clearing the cached token.
+- Updated the Connect Stake modal to make credential login primary, keep the DevTools token paste flow as a fallback, and show expiring/expired states plus a dashboard warning banner.
+- App version → `0.4.0`.
+
 ## 2026-06-04 — v0.3.0
 
 ### Dashboard refresh controls + P/E formatting

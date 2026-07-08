@@ -9,7 +9,7 @@ Read-only — no trade placement.
 ## Features
 
 - Manual holdings and watchlist tracking — add/edit/delete tickers from the dashboard (no broker login needed)
-- Optional live holdings and watchlist sync from Stake AU (paste a session token in the dashboard)
+- Optional live holdings and watchlist sync from Stake AU (dashboard credential login, or fallback session-token paste)
 - 30-day price sparkline per card with daily change
 - 52-week high/low signals (computed from full 1-year history)
 - 50-day moving average signals (computed server-side)
@@ -37,21 +37,29 @@ Read-only — no trade placement.
 
 You don't need a Stake account to use the dashboard. Click **Manage** in the header to add holdings (ticker, exchange, quantity, average cost) and watchlist tickers by hand. This is the reliable default and never depends on Stake.
 
-If you do want to auto-sync from Stake AU, the dashboard uses the unofficial `stake-python` library, which authenticates with a **session token**.
+If you do want to auto-sync from Stake AU, the dashboard uses the unofficial `stake-python` library. The dashboard can exchange your username, password, and current 2FA code for a session token at request time. Credentials are never stored; only the resulting session token is persisted.
 
-**Recommended — paste the token in the dashboard:**
+**Recommended — log in from the dashboard:**
+
+1. Click **Connect Stake** in the dashboard header.
+2. Enter your Stake username and password.
+3. Enter the current 2FA code if your account has 2FA enabled.
+4. Click **Connect**. The app stores only the returned session token.
+5. Click **Sync** to pull holdings and watchlist.
+
+**Fallback — paste a token manually:** open **Connect Stake** and expand **Or paste a session token manually**.
 
 1. Log in to [trading.hellostake.com](https://trading.hellostake.com) in your browser.
 2. Open DevTools (F12) → **Network** tab, then click around the app (e.g. open your portfolio/watchlist) so requests appear.
 3. Click any request to `api2.prd.hellostake.com` and find the **`Stake-Session-Token`** entry under **Request Headers** (it's a request header, not a cookie).
-4. Copy its value, click **Connect Stake** in the dashboard header, paste it, and click **Connect**. The token is validated against Stake and persisted to the database.
+4. Copy its value, paste it into the fallback form, and click **Connect**. The token is validated against Stake and persisted to the database.
 5. Click **Sync** to pull holdings and watchlist.
 
-**Alternative — set it in `.env`:** put the token in `STAKE_SESSION_TOKEN`. It's persisted to the database on first use, so subsequent restarts work even if you later blank it.
+**Alternative — set it in `.env`:** put the token in `STAKE_SESSION_TOKEN` for first-run convenience. Once a token is saved in the database, the database token takes priority and a stale `.env` value is ignored on restart.
 
-**Bootstrap with username/password (one-time, advanced):** set `STAKE_USERNAME`, `STAKE_PASSWORD`, and — if your account has 2FA — a *current* `STAKE_OTP` code, leaving `STAKE_SESSION_TOKEN` blank. On startup the app exchanges these for a session token and persists it. Because the OTP is short-lived this only works at the moment a fresh code is supplied; the paste-token flow above is simpler.
+**Bootstrap with username/password (one-time, advanced):** set `STAKE_USERNAME`, `STAKE_PASSWORD`, and — if your account has 2FA — a *current* `STAKE_OTP` code, leaving `STAKE_SESSION_TOKEN` blank. On startup the app exchanges these for a session token and persists it. Because the OTP is short-lived this only works at the moment a fresh code is supplied; the dashboard login flow above is simpler.
 
-**Session token expiry:** Stake tokens are valid for ~30 days. When one expires, repeat the paste-token flow to refresh it — the new token overwrites the old one automatically. Your manually added holdings/watchlist are never affected by Stake sync.
+**Session token expiry:** Stake tokens are valid for ~30 days. The dashboard warns when a saved token is approaching expiry or has failed sync. When that happens, repeat the dashboard login flow or paste a fresh token manually. Your manually added holdings/watchlist are never affected by Stake sync.
 
 ### FMP API key (optional)
 
@@ -74,9 +82,8 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-# Optional — only needed for Stake auto-sync. You can also paste the token via the
-# dashboard's "Connect Stake" button instead of setting it here. Leave blank to use
-# manual tracking only.
+# Optional — only needed for Stake auto-sync. The dashboard's "Connect Stake"
+# login flow is preferred. Leave blank to use manual tracking only.
 STAKE_SESSION_TOKEN=
 # One-time bootstrap alternative (advanced). STAKE_OTP is your current 2FA code, if enabled.
 # STAKE_USERNAME=your@email.com
@@ -258,7 +265,7 @@ Returns today's FMP call count, limit, and remaining calls.
 ## Troubleshooting
 
 **No holdings/watchlist after sync**
-Stake tokens expire (~30 days). Refresh it via **Connect Stake** in the dashboard — copy the `Stake-Session-Token` request header (DevTools → Network → an `api2.prd.hellostake.com` request), not a cookie. `POST /api/sync` returns a clear error if the token is missing or invalid; your manually added tickers are unaffected. If you don't use Stake, add tickers via **Manage**.
+Stake tokens expire (~30 days). Refresh via **Connect Stake** in the dashboard with your current credentials and 2FA code, or use the manual token fallback with the `Stake-Session-Token` request header (DevTools → Network → an `api2.prd.hellostake.com` request), not a cookie. `POST /api/sync` returns a clear error if the token is missing or invalid; your manually added tickers are unaffected. If you don't use Stake, add tickers via **Manage**.
 
 **FMP data not loading**
 Check `GET /api/admin/usage`. If today's count is at 200, data will resume the next calendar day (UTC).
