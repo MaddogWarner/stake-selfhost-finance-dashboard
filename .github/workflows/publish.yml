@@ -57,7 +57,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
-          image-ref: ghcr.io/${{ github.repository }}/backend@${{ steps.push.outputs.digest }}
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           format: sarif
           output: trivy-backend.sarif
           severity: CRITICAL,HIGH
@@ -112,7 +112,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
-          image-ref: ghcr.io/${{ github.repository }}/frontend@${{ steps.push.outputs.digest }}
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           format: sarif
           output: trivy-frontend.sarif
           severity: CRITICAL,HIGH
