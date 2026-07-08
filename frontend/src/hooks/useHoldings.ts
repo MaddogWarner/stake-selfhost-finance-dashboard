@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchStakeStatus, fetchUsage, setStakeToken } from '../api/admin';
+import { fetchStakeStatus, fetchUsage, setStakeToken, stakeLogin } from '../api/admin';
 import {
   addWatchlist,
   createHolding,
@@ -80,6 +80,14 @@ export function useSetStakeToken() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: setStakeToken,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stake-status'] }),
+  });
+}
+
+export function useStakeLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: stakeLogin,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stake-status'] }),
   });
 }
