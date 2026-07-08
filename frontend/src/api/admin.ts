@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { ApiUsage, AppSettings, StakeStatus } from '../types';
+import type { ApiUsage, AppSettings, StakeLoginPayload, StakeStatus } from '../types';
 
 export async function fetchUsage() {
   const response = await api.get<ApiUsage>('/api/admin/usage');
@@ -23,5 +23,10 @@ export async function fetchStakeStatus(): Promise<StakeStatus> {
 
 export async function setStakeToken(token: string): Promise<StakeStatus> {
   const response = await api.post<StakeStatus>('/api/admin/stake-token', { token });
+  return response.data;
+}
+
+export async function stakeLogin(payload: StakeLoginPayload): Promise<StakeStatus> {
+  const response = await api.post<StakeStatus>('/api/admin/stake-login', payload);
   return response.data;
 }

@@ -16,6 +16,7 @@ from app.schemas.holding import (
     WatchlistRead,
 )
 from app.services import stake_client
+from app.services.settings_service import mark_stake_token_invalid
 from app.utils.tickers import normalise_ticker
 
 router = APIRouter()
@@ -58,6 +59,7 @@ async def sync_now(db: AsyncSession = Depends(get_db)) -> dict[str, bool]:
         await sync_stake_data(db)
     except RuntimeError as exc:
         # Stake not configured / token invalid. Manual data is untouched.
+        await mark_stake_token_invalid(db)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"synced": True}
 

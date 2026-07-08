@@ -25,16 +25,22 @@ def set_cached_token(token: str | None) -> None:
 async def bootstrap_stake_token(db: AsyncSession) -> None:
     global _cached_token
 
-    # Priority 1: env var (explicit user override)
-    if settings.stake_session_token:
-        _cached_token = settings.stake_session_token
-        return
-
-    # Priority 2: previously persisted token in DB
+    # Priority 1: previously persisted token in DB
     stored = await get_stake_token(db)
     if stored:
         _cached_token = stored
-        logger.info("Stake session token loaded from database.")
+        if settings.stake_session_token:
+            logger.info(
+                "Stake session token loaded from database; ignoring STAKE_SESSION_TOKEN."
+            )
+        else:
+            logger.info("Stake session token loaded from database.")
+        return
+
+    # Priority 2: env var as first-run convenience only
+    if settings.stake_session_token:
+        _cached_token = settings.stake_session_token
+        logger.info("Stake session token loaded from STAKE_SESSION_TOKEN.")
         return
 
     # Priority 3: exchange username/password for a token (one-time bootstrap path).
@@ -51,7 +57,7 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
         "No session token found; authenticating with STAKE_USERNAME/STAKE_PASSWORD."
     )
     try:
-        token = await _authenticate(
+        token = await authenticate(
             settings.stake_username, settings.stake_password, settings.stake_otp
         )
     except Exception as exc:
@@ -80,7 +86,7 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
     )
 
 
-async def _authenticate(
+async def authenticate(
     username: str, password: str, otp: str | None = None
 ) -> str | None:
     try:

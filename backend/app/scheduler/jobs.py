@@ -16,7 +16,7 @@ from app.models.news import News
 from app.models.price_history import PriceHistory
 from app.models.watchlist import Watchlist
 from app.services import fmp_service, yfinance_service
-from app.services.settings_service import get_data_source
+from app.services.settings_service import get_data_source, mark_stake_token_invalid
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 NEW_YORK = ZoneInfo("America/New_York")
@@ -54,7 +54,11 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 async def sync_stake_holdings() -> None:
     async with AsyncSessionLocal() as db:
-        await sync_stake_data(db)
+        try:
+            await sync_stake_data(db)
+        except RuntimeError:
+            await mark_stake_token_invalid(db)
+            raise
 
 
 async def refresh_prices() -> None:

@@ -7,7 +7,7 @@ import Modal from '../components/Modal';
 import RefreshControls from '../components/RefreshControls';
 import SettingsPanel from '../components/SettingsPanel';
 import StakeConnect from '../components/StakeConnect';
-import { useHoldings, useSyncStake, useUsage, useWatchlist } from '../hooks/useHoldings';
+import { useHoldings, useStakeStatus, useSyncStake, useUsage, useWatchlist } from '../hooks/useHoldings';
 import type { Exchange, FeedAsset, MarketTab } from '../types';
 
 const marketTabs: { label: string; value: MarketTab }[] = [
@@ -28,6 +28,10 @@ export default function Dashboard() {
   const watchlist = useWatchlist(exchange);
   const usage = useUsage();
   const sync = useSyncStake();
+  const stakeStatus = useStakeStatus();
+  const [stakeBannerDismissed, setStakeBannerDismissed] = useState(false);
+  const tokenState = stakeStatus.data?.token_state;
+  const showStakeBanner = !stakeBannerDismissed && (tokenState === 'expired' || tokenState === 'expiring_soon');
 
   const assets = useMemo<FeedAsset[]>(() => {
     const holdingAssets = (holdings.data ?? []).map((item) => ({
@@ -88,6 +92,30 @@ export default function Dashboard() {
             </button>
           </div>
         </header>
+
+        {showStakeBanner ? (
+          <div
+            className={clsx(
+              'mt-4 flex flex-col gap-3 rounded border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between',
+              tokenState === 'expired'
+                ? 'border-red-500/40 bg-red-500/10 text-red-100'
+                : 'border-amber-500/40 bg-amber-500/10 text-amber-100',
+            )}
+          >
+            <span>
+              {tokenState === 'expired'
+                ? 'Stake token expired - holdings are no longer syncing. Re-connect in Manage.'
+                : 'Stake token expires soon - holdings may stop syncing. Re-connect in Manage.'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setStakeBannerDismissed(true)}
+              className="self-start rounded border border-current px-3 py-1 text-xs font-semibold text-current hover:bg-white/10 sm:self-auto"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
 
         <section className="mt-5 space-y-4">
           <div className="flex flex-wrap gap-2">
