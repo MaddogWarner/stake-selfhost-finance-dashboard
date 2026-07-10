@@ -12,6 +12,7 @@ from app.db.redis import close_redis
 from app.db.session import AsyncSessionLocal
 from app.scheduler.registry import start_scheduler, stop_scheduler
 from app.services.stake_service import bootstrap_stake_token
+from app.version import __version__
 
 
 def _run_migrations() -> None:
@@ -32,7 +33,9 @@ async def lifespan(app: FastAPI):
         await close_redis()
 
 
-app = FastAPI(title="Stake Investment Dashboard", version="0.4.0", lifespan=lifespan)
+app = FastAPI(
+    title="Stake Investment Dashboard", version=__version__, lifespan=lifespan
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -51,3 +54,9 @@ app.include_router(admin.router, prefix="/api", tags=["admin"])
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+# Under /api so the production nginx proxy reaches it (it only forwards /api).
+@app.get("/api/version")
+async def version() -> dict[str, str]:
+    return {"version": __version__}
