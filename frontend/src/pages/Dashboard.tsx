@@ -7,7 +7,7 @@ import Modal from '../components/Modal';
 import RefreshControls from '../components/RefreshControls';
 import SettingsPanel from '../components/SettingsPanel';
 import StakeConnect from '../components/StakeConnect';
-import { useHoldings, useStakeStatus, useSyncStake, useUsage, useWatchlist } from '../hooks/useHoldings';
+import { useHoldings, useStakeStatus, useSyncStake, useUsage, useVersion, useWatchlist } from '../hooks/useHoldings';
 import type { Exchange, FeedAsset, MarketTab } from '../types';
 
 const marketTabs: { label: string; value: MarketTab }[] = [
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const usage = useUsage();
   const sync = useSyncStake();
   const stakeStatus = useStakeStatus();
+  const version = useVersion();
   const [stakeBannerDismissed, setStakeBannerDismissed] = useState(false);
   const tokenState = stakeStatus.data?.token_state;
   const showStakeBanner = !stakeBannerDismissed && (tokenState === 'expired' || tokenState === 'expiring_soon');
@@ -171,6 +172,10 @@ export default function Dashboard() {
             Unable to load portfolio data from the backend.
           </div>
         )}
+
+        <footer className="mt-10 border-t border-slate-800 pt-4 text-center text-xs text-slate-600">
+          Stake Dashboard{version.data ? ` v${version.data}` : ''}
+        </footer>
       </div>
 
       {modal === 'manage' ? (
