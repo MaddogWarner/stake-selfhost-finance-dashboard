@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchStakeStatus, fetchUsage, setStakeToken, stakeLogin } from '../api/admin';
+import { fetchStakeStatus, fetchUsage, fetchVersion, setStakeToken, stakeLogin } from '../api/admin';
 import {
   addWatchlist,
   createHolding,
@@ -18,6 +18,10 @@ export function useHoldings(exchange?: Exchange) {
 
 export function useWatchlist(exchange?: Exchange) {
   return useQuery({ queryKey: ['watchlist', exchange], queryFn: () => fetchWatchlist(exchange) });
+}
+
+export function useVersion() {
+  return useQuery({ queryKey: ['version'], queryFn: fetchVersion, staleTime: Infinity });
 }
 
 export function useUsage() {

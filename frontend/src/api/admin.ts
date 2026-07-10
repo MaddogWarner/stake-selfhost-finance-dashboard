@@ -1,6 +1,11 @@
 import { api } from './client';
 import type { ApiUsage, AppSettings, StakeLoginPayload, StakeStatus } from '../types';
 
+export async function fetchVersion(): Promise<string> {
+  const response = await api.get<{ version: string }>('/api/version');
+  return response.data.version;
+}
+
 export async function fetchUsage() {
   const response = await api.get<ApiUsage>('/api/admin/usage');
   return response.data;
