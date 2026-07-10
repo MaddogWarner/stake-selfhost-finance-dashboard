@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-10 — v0.4.1
+
+### Footer version display
+
+- Added a single source of truth for the app version: `backend/app/version.py` (`__version__`). FastAPI now reads its version from there instead of a hardcoded string.
+- Added `GET /api/version` (under `/api` so the production nginx proxy forwards it).
+- Added a dashboard footer that fetches and displays the running version (e.g. "Stake Dashboard v0.4.1"); degrades to plain "Stake Dashboard" if the backend is unreachable.
+- Documented the bump procedure in `CLAUDE.md` — edit `version.py` only, plus CHANGELOG and git tag.
+- App version → `0.4.1`.
+
 ## 2026-07-08 — v0.4.0
 
 ### Stake auth lifecycle
