@@ -33,7 +33,9 @@ async def lifespan(app: FastAPI):
         await close_redis()
 
 
-app = FastAPI(title="Stake Investment Dashboard", version=__version__, lifespan=lifespan)
+app = FastAPI(
+    title="Stake Investment Dashboard", version=__version__, lifespan=lifespan
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
