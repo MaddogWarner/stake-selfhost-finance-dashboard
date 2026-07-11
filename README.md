@@ -25,7 +25,7 @@ Read-only — no trade placement.
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Docker Compose **v2.24 or later** (the compose files use the optional-`.env` syntax added in 2.24 — check with `docker compose version`)
 - A [Stake AU](https://hellostake.com/au) account
 - A free [Financial Modeling Prep](https://financialmodelingprep.com) API key (250 calls/day on the free tier) — optional if you run in Yahoo Finance mode
 

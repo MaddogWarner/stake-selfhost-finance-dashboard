@@ -32,12 +32,15 @@ async def get_stake_token(db: AsyncSession) -> str | None:
             )
             await mark_stake_token_invalid(db)
             return None
-    # Legacy plaintext values are upgraded on first successful read.
-    await set_stake_token(db, value)
+    # Legacy plaintext values are upgraded on first successful read. Only the stored
+    # value changes; saved_at/invalid metadata must reflect the original token, not
+    # the migration, so the expiry warning fires on time.
+    await _upsert_stake_token_value(db, value)
+    await db.commit()
     return value
 
 
-async def set_stake_token(db: AsyncSession, token: str) -> None:
+async def _upsert_stake_token_value(db: AsyncSession, token: str) -> None:
     encrypted = f"enc:v1:{encrypt(token)}"
     stmt = insert(AppSetting).values(key="stake_session_token", value=encrypted)
     stmt = stmt.on_conflict_do_update(
@@ -45,6 +48,10 @@ async def set_stake_token(db: AsyncSession, token: str) -> None:
         set_={"value": stmt.excluded.value, "updated_at": func.now()},
     )
     await db.execute(stmt)
+
+
+async def set_stake_token(db: AsyncSession, token: str) -> None:
+    await _upsert_stake_token_value(db, token)
     await set_stake_token_meta(db)
     await db.commit()
 
