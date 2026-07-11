@@ -25,7 +25,7 @@ Read-only — no trade placement.
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Docker Compose **v2.24 or later** (the compose files use the optional-`.env` syntax added in 2.24 — check with `docker compose version`)
 - A [Stake AU](https://hellostake.com/au) account
 - A free [Financial Modeling Prep](https://financialmodelingprep.com) API key (250 calls/day on the free tier) — optional if you run in Yahoo Finance mode
 
@@ -75,7 +75,7 @@ Sign up at [financialmodelingprep.com](https://financialmodelingprep.com) and co
 # Clone or download the project
 cd "Stake dashboard"
 
-# Copy the environment template and fill in your credentials
+# Optional: copy the environment template if you want to configure FMP or Stake
 cp .env.example .env
 ```
 
@@ -118,7 +118,7 @@ TAG=0.2.0 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 - Pin a release with `TAG` (e.g. `0.2.0`), or omit it to use `latest`.
-- Only the frontend port is published — `127.0.0.1:3000` by default. Expose it on your LAN with `FRONTEND_BIND`, e.g. `FRONTEND_BIND=192.168.1.150:3000 TAG=0.2.0 docker compose -f docker-compose.ghcr.yml up -d`. The backend is reachable only inside the Compose network, via the frontend's `/api` proxy.
+- HTTP and HTTPS are published on `127.0.0.1:3000` and `127.0.0.1:3443`; HTTP redirects to HTTPS. For LAN use, set `FRONTEND_HTTP_BIND` and `FRONTEND_HTTPS_BIND`. If the HTTPS host port changes, set `HTTPS_PORT` to the same port so redirects remain correct.
 - Images are published publicly by CI; if you make the packages private, run `docker login ghcr.io` first.
 - Update to a new release: `TAG=<version> docker compose -f docker-compose.ghcr.yml pull && ... up -d`.
 
@@ -129,14 +129,24 @@ cd docker
 docker compose up --build
 ```
 
-Serves the dashboard at <http://localhost:3000>, the API at <http://localhost:8000> (and docs at `/docs`), both bound to `127.0.0.1` only.
+Open <https://localhost:3443>. The first visit displays the one-time password setup wizard. The certificate is self-signed, so accept the warning: Chrome **Advanced → Proceed**, Firefox **Advanced → Accept the Risk and Continue**, or Safari **Show Details → visit this website**. <http://localhost:3000> redirects to HTTPS. The development API remains at <http://localhost:8000> and its `/docs` schema is public.
+
+## Security
+
+**Do not expose this dashboard directly to the internet.** It is designed for localhost, a trusted LAN, or a private VPN such as Tailscale. The Stake session token grants access to a live brokerage account.
+
+- Complete the setup wizard immediately after first start. Until setup is complete, the first person who can reach the published port can choose the admin password. The default loopback binds mean only the local host can do so.
+- Sessions are revocable, Redis-backed cookies with a fixed seven-day lifetime. Login and sensitive Stake connection endpoints are rate limited; repeated login attempts can lock that source address out for up to one minute.
+- The generated TLS certificate persists in the `certs` volume. To use a trusted certificate, replace `server.crt` and `server.key` in that volume with your own files and restart the frontend.
+- Stake tokens are encrypted in PostgreSQL. The Fernet key is supplied through `TOKEN_ENCRYPTION_KEY` or generated into the backend `/data` volume. Because that key is on the same host as the database, this protects database dumps, backups, and direct database access—not a fully compromised host.
+- To reset the password from the host, run `docker compose exec backend python -m app.reset_admin_password` from `docker/`. This invalidates all sessions and reopens the setup wizard; there is intentionally no HTTP reset endpoint.
 
 ### Initial data load
 
 Add tickers via the **Manage** button in the header (no Stake needed), or — if you've connected Stake — trigger a sync to pull holdings and watchlist:
 
 ```bash
-curl -X POST http://localhost:8000/api/sync
+    curl -k -b cookies.txt -X POST https://localhost:3443/api/sync
 ```
 
 Price data, fundamentals, and news will begin populating on the next scheduler run (prices refresh every 5 minutes during market hours; news every 2 hours).
@@ -230,7 +240,7 @@ curl -X POST http://localhost:8000/api/admin/settings \
 ## Architecture
 
 ```text
-React (port 3000) → FastAPI (port 8000) → Redis (cache) → PostgreSQL → external APIs
+React/nginx (HTTPS 3443; HTTP 3000 redirects) → FastAPI (port 8000) → Redis → PostgreSQL → external APIs
 ```
 
 Four Docker services:

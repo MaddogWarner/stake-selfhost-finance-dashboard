@@ -5,7 +5,8 @@
 #
 # The frontend serves the UI and proxies /api to the backend over the internal
 # network, so only the frontend port is published. Backend runs DB migrations on
-# startup. Override the published address with FRONTEND_BIND (default 127.0.0.1:3000).
+# startup. Override FRONTEND_HTTP_BIND/FRONTEND_HTTPS_BIND and keep HTTPS_PORT
+# aligned with the published HTTPS port used in redirects.
 services:
   db:
     image: postgres:16-alpine
@@ -30,18 +31,28 @@ services:
 
   backend:
     image: ghcr.io/maddogwarner/stake-selfhost-finance-dashboard/backend:${TAG:-latest}
-    env_file: ../.env
+    env_file:
+      - path: ../.env
+        required: false
+    volumes:
+      - backend_data:/data
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=*
 
   frontend:
     image: ghcr.io/maddogwarner/stake-selfhost-finance-dashboard/frontend:${TAG:-latest}
     ports:
-      - "${FRONTEND_BIND:-127.0.0.1:3000}:80"
+      - "${FRONTEND_HTTP_BIND:-127.0.0.1:3000}:80"
+      - "${FRONTEND_HTTPS_BIND:-127.0.0.1:3443}:443"
+    environment:
+      HTTPS_PORT: "${HTTPS_PORT:-3443}"
+    volumes:
+      - certs:/etc/nginx/certs
     depends_on:
       - backend
     restart: unless-stopped
@@ -49,3 +60,5 @@ services:
 volumes:
   pgdata:
   redisdata:
+  backend_data:
+  certs:

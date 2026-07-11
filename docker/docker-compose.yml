@@ -20,7 +20,11 @@ services:
 
   backend:
     build: ../backend
-    env_file: ../.env
+    env_file:
+      - path: ../.env
+        required: false
+    volumes:
+      - backend_data:/data
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -28,7 +32,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=*
 
   frontend:
     build:
@@ -38,10 +42,17 @@ services:
       args:
         VITE_API_URL: ""
     ports:
-      - "127.0.0.1:3000:80"
+      - "${FRONTEND_HTTP_BIND:-127.0.0.1:3000}:80"
+      - "${FRONTEND_HTTPS_BIND:-127.0.0.1:3443}:443"
+    environment:
+      HTTPS_PORT: "${HTTPS_PORT:-3443}"
+    volumes:
+      - certs:/etc/nginx/certs
     depends_on:
       - backend
 
 volumes:
   pgdata:
   redisdata:
+  backend_data:
+  certs:

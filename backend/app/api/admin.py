@@ -14,6 +14,7 @@ from app.models.api_usage import ApiUsage
 from app.models.holding import Holding
 from app.services import stake_client
 from app.services.rate_limiter import FMP_DAILY_LIMIT
+from app.services.rate_limit_service import rate_limit
 from app.services.settings_service import (
     VALID_SOURCES,
     get_data_source,
@@ -124,7 +125,11 @@ async def stake_status(db: AsyncSession = Depends(get_db)) -> StakeStatus:
     return await _stake_status(db)
 
 
-@router.post("/admin/stake-token", response_model=StakeStatus)
+@router.post(
+    "/admin/stake-token",
+    response_model=StakeStatus,
+    dependencies=[Depends(rate_limit("stake_token", 10, 60))],
+)
 async def set_stake_token_endpoint(
     payload: StakeTokenUpdate, db: AsyncSession = Depends(get_db)
 ) -> StakeStatus:
@@ -143,7 +148,11 @@ async def set_stake_token_endpoint(
     return await _stake_status(db)
 
 
-@router.post("/admin/stake-login", response_model=StakeStatus)
+@router.post(
+    "/admin/stake-login",
+    response_model=StakeStatus,
+    dependencies=[Depends(rate_limit("stake_login", 5, 60))],
+)
 async def stake_login(
     payload: StakeLoginRequest, db: AsyncSession = Depends(get_db)
 ) -> StakeStatus:
