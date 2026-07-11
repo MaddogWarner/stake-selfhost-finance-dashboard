@@ -53,14 +53,19 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
             validate_password("too-short")
         with self.assertRaises(ValueError):
             validate_password("x" * 73)
-        hashed = bcrypt.hashpw(b"correct horse battery staple", bcrypt.gensalt()).decode()
+        hashed = bcrypt.hashpw(
+            b"correct horse battery staple", bcrypt.gensalt()
+        ).decode()
         self.assertTrue(verify_password("correct horse battery staple", hashed))
         self.assertFalse(verify_password("incorrect password", hashed))
 
     def test_crypto_round_trip_and_wrong_key(self):
         with tempfile.TemporaryDirectory() as directory:
-            with patch.object(crypto_service, "KEY_PATH", Path(directory) / "fernet.key"), patch.object(
-                crypto_service.settings, "token_encryption_key", None
+            with (
+                patch.object(
+                    crypto_service, "KEY_PATH", Path(directory) / "fernet.key"
+                ),
+                patch.object(crypto_service.settings, "token_encryption_key", None),
             ):
                 crypto_service.initialise_crypto()
                 encrypted = crypto_service.encrypt("secret")

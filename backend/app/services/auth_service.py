@@ -16,7 +16,9 @@ SESSION_TTL_SECONDS = 604800
 
 
 async def get_password_hash(db: AsyncSession) -> str | None:
-    result = await db.execute(select(AppSetting.value).where(AppSetting.key == PASSWORD_KEY))
+    result = await db.execute(
+        select(AppSetting.value).where(AppSetting.key == PASSWORD_KEY)
+    )
     return result.scalar_one_or_none()
 
 
@@ -32,7 +34,9 @@ async def set_password(db: AsyncSession, password: str) -> bool:
     validate_password(password)
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     stmt = insert(AppSetting).values(key=PASSWORD_KEY, value=password_hash)
-    stmt = stmt.on_conflict_do_nothing(index_elements=[AppSetting.key]).returning(AppSetting.key)
+    stmt = stmt.on_conflict_do_nothing(index_elements=[AppSetting.key]).returning(
+        AppSetting.key
+    )
     won = (await db.execute(stmt)).scalar_one_or_none() is not None
     await db.commit()
     return won

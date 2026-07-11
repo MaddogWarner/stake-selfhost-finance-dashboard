@@ -56,9 +56,15 @@ app.add_middleware(
 
 protected = [Depends(require_auth), Depends(rate_limit("global", 240, 60))]
 app.include_router(auth.router, prefix="/api", tags=["auth"])
-app.include_router(holdings.router, prefix="/api", tags=["holdings"], dependencies=protected)
-app.include_router(prices.router, prefix="/api", tags=["prices"], dependencies=protected)
-app.include_router(fundamentals.router, prefix="/api", tags=["fundamentals"], dependencies=protected)
+app.include_router(
+    holdings.router, prefix="/api", tags=["holdings"], dependencies=protected
+)
+app.include_router(
+    prices.router, prefix="/api", tags=["prices"], dependencies=protected
+)
+app.include_router(
+    fundamentals.router, prefix="/api", tags=["fundamentals"], dependencies=protected
+)
 app.include_router(news.router, prefix="/api", tags=["news"], dependencies=protected)
 app.include_router(admin.router, prefix="/api", tags=["admin"], dependencies=protected)
 

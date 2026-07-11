@@ -31,8 +31,13 @@ class PasswordRequest(BaseModel):
 def _set_cookie(response: Response, token: str) -> None:
     # SameSite=Lax is the CSRF control for this single-origin, non-cross-site app.
     response.set_cookie(
-        SESSION_COOKIE, token, max_age=SESSION_TTL_SECONDS, path="/",
-        httponly=True, secure=True, samesite="lax",
+        SESSION_COOKIE,
+        token,
+        max_age=SESSION_TTL_SECONDS,
+        path="/",
+        httponly=True,
+        secure=True,
+        samesite="lax",
     )
 
 
@@ -51,7 +56,12 @@ async def status(
 
 
 @router.post("/auth/setup", dependencies=[Depends(rate_limit("auth_setup", 5, 60))])
-async def setup(payload: PasswordRequest, response: Response, db: AsyncSession = Depends(get_db), redis: Redis = Depends(get_redis)) -> dict[str, AuthStatus]:
+async def setup(
+    payload: PasswordRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> dict[str, AuthStatus]:
     password = payload.password.get_secret_value()
     try:
         validate_password(password)
@@ -65,7 +75,12 @@ async def setup(payload: PasswordRequest, response: Response, db: AsyncSession =
 
 
 @router.post("/auth/login", dependencies=[Depends(rate_limit("auth_login", 5, 60))])
-async def login(payload: PasswordRequest, response: Response, db: AsyncSession = Depends(get_db), redis: Redis = Depends(get_redis)) -> dict[str, AuthStatus]:
+async def login(
+    payload: PasswordRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> dict[str, AuthStatus]:
     password_hash = await get_password_hash(db)
     if password_hash is None:
         raise HTTPException(status_code=409, detail="Complete setup before logging in.")
@@ -77,7 +92,11 @@ async def login(payload: PasswordRequest, response: Response, db: AsyncSession =
 
 
 @router.post("/auth/logout")
-async def logout(request: Request, response: Response, redis: Redis = Depends(get_redis)) -> dict[str, AuthStatus]:
+async def logout(
+    request: Request, response: Response, redis: Redis = Depends(get_redis)
+) -> dict[str, AuthStatus]:
     await destroy_session(redis, request.cookies.get(SESSION_COOKIE))
-    response.delete_cookie(SESSION_COOKIE, path="/", secure=True, httponly=True, samesite="lax")
+    response.delete_cookie(
+        SESSION_COOKIE, path="/", secure=True, httponly=True, samesite="lax"
+    )
     return {"status": "unauthenticated"}
