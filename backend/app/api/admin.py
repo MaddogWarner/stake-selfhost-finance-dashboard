@@ -167,8 +167,11 @@ async def stake_login(
         token = await stake_service.authenticate(username, password, otp)
     except Exception as exc:  # noqa: BLE001 - surface auth failure to the user
         logger.warning("Stake credential login failed: %s", exc)
+        # 400, not 401: in this app 401 means the dashboard session is invalid
+        # (the frontend interceptor logs out on it); a Stake rejection is a
+        # problem with the submitted credentials/OTP, like stake-token above.
         raise HTTPException(
-            status_code=401,
+            status_code=400,
             detail=(
                 f"Stake login failed: {exc}. If 2FA is enabled, include a "
                 "current OTP code."
@@ -176,7 +179,7 @@ async def stake_login(
         ) from exc
     if not token:
         raise HTTPException(
-            status_code=401,
+            status_code=400,
             detail="Stake login succeeded but returned no session token.",
         )
 

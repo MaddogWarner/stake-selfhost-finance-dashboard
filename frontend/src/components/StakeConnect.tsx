@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useSetStakeToken, useStakeLogin, useStakeStatus } from '../hooks/useHoldings';
 import { errorMessage } from '../utils/errors';
@@ -19,6 +19,8 @@ export default function StakeConnect() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpPrompted, setOtpPrompted] = useState(false);
+  const otpInputRef = useRef<HTMLInputElement>(null);
 
   const connected = status.data?.configured ?? false;
   const lastSync = status.data?.last_sync;
@@ -41,14 +43,28 @@ export default function StakeConnect() {
     setUsername('');
     setPassword('');
     setOtp('');
+    setOtpPrompted(false);
   };
 
   const handleLoginSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!username.trim() || !password) return;
+    const submittedOtp = otp.trim();
     loginMutation.mutate(
-      { username: username.trim(), password, otp: otp.trim() || undefined },
-      { onSettled: clearLoginFields },
+      { username: username.trim(), password, otp: submittedOtp || undefined },
+      {
+        // Keep the credentials on failure: for 2FA accounts the first (no-OTP)
+        // attempt is what triggers Stake to send the code, so the user only
+        // needs to add the code and resubmit — not retype everything.
+        onSuccess: clearLoginFields,
+        onError: () => {
+          setOtp('');
+          if (!submittedOtp) {
+            setOtpPrompted(true);
+            otpInputRef.current?.focus();
+          }
+        },
+      },
     );
   };
 
@@ -99,10 +115,17 @@ export default function StakeConnect() {
             />
           </label>
         </div>
+        {otpPrompted ? (
+          <p className="rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            If your credentials are correct and 2FA is enabled, Stake has just sent you a
+            code. Enter it below and connect again.
+          </p>
+        ) : null}
         <label htmlFor="stake-otp" className="block text-xs text-slate-400">
           2FA code - required if your account has 2FA enabled
           <input
             id="stake-otp"
+            ref={otpInputRef}
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
