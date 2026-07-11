@@ -5,13 +5,17 @@ from datetime import datetime, timezone
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
+from fastapi import Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, fundamentals, holdings, news, prices
+from app.api import admin, auth, fundamentals, holdings, news, prices
 from app.db.redis import close_redis
 from app.db.session import AsyncSessionLocal
 from app.scheduler.registry import start_scheduler, stop_scheduler
 from app.services.stake_service import bootstrap_stake_token
+from app.services.auth_service import require_auth
+from app.services.crypto_service import initialise_crypto
+from app.services.rate_limit_service import rate_limit
 from app.version import __version__
 
 
@@ -23,6 +27,7 @@ def _run_migrations() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await asyncio.to_thread(_run_migrations)
+    initialise_crypto()
     async with AsyncSessionLocal() as db:
         await bootstrap_stake_token(db)
     start_scheduler()
@@ -38,17 +43,24 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://localhost:3443",
+        "https://127.0.0.1:3443",
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
-app.include_router(holdings.router, prefix="/api", tags=["holdings"])
-app.include_router(prices.router, prefix="/api", tags=["prices"])
-app.include_router(fundamentals.router, prefix="/api", tags=["fundamentals"])
-app.include_router(news.router, prefix="/api", tags=["news"])
-app.include_router(admin.router, prefix="/api", tags=["admin"])
+protected = [Depends(require_auth), Depends(rate_limit("global", 240, 60))]
+app.include_router(auth.router, prefix="/api", tags=["auth"])
+app.include_router(holdings.router, prefix="/api", tags=["holdings"], dependencies=protected)
+app.include_router(prices.router, prefix="/api", tags=["prices"], dependencies=protected)
+app.include_router(fundamentals.router, prefix="/api", tags=["fundamentals"], dependencies=protected)
+app.include_router(news.router, prefix="/api", tags=["news"], dependencies=protected)
+app.include_router(admin.router, prefix="/api", tags=["admin"], dependencies=protected)
 
 
 @app.get("/health")

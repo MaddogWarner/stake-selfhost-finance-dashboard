@@ -9,6 +9,7 @@ import SettingsPanel from '../components/SettingsPanel';
 import StakeConnect from '../components/StakeConnect';
 import { useHoldings, useStakeStatus, useSyncStake, useUsage, useVersion, useWatchlist } from '../hooks/useHoldings';
 import type { Exchange, FeedAsset, MarketTab } from '../types';
+import { logout } from '../api/auth';
 
 const marketTabs: { label: string; value: MarketTab }[] = [
   { label: 'ASX', value: 'ASX' },
@@ -69,6 +70,13 @@ export default function Dashboard() {
             <span className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-300">
               API Usage: {usage.data?.fmp?.today ?? 0}
             </span>
+            <button
+              type="button"
+              onClick={() => logout().then(() => window.dispatchEvent(new Event('stake-auth-required')))}
+              className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800"
+            >
+              Log out
+            </button>
             <button
               type="button"
               onClick={() => setModal('manage')}

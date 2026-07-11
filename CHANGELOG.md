@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-11 — v0.5.0
+
+### Security hardening
+
+- Added HTTPS-by-default nginx termination on `https://localhost:3443`, persistent first-run self-signed certificates, and an HTTP 301 redirect on port 3000.
+- Added a one-time admin setup wizard, bcrypt password storage, Redis-backed seven-day sessions, protected API routers, login/logout UI, and host-only password reset.
+- Added versioned Fernet encryption for persisted Stake tokens, first-run key generation in a persistent backend volume, legacy plaintext migration, and safe key-loss handling.
+- Added Redis fixed-window limits for login, setup, Stake credential/token submission, and a global API backstop. Rate limiting fails open if Redis is unavailable while authentication remains fail closed.
+- Updated deployment and security guidance, including the setup race, trusted-certificate replacement, and the limits of same-host key custody.
+- App version → `0.5.0`.
+
 ## 2026-07-10 — v0.4.1
 
 ### Footer version display

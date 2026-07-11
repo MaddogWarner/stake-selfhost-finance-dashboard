@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Dashboard from './pages/Dashboard';
 import { RefreshProvider } from './hooks/useRefresh';
+import AuthGate from './components/AuthGate';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,9 +15,11 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RefreshProvider>
-        <Dashboard />
-      </RefreshProvider>
+      <AuthGate>
+        <RefreshProvider>
+          <Dashboard />
+        </RefreshProvider>
+      </AuthGate>
     </QueryClientProvider>
   );
 }
