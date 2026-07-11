@@ -9,11 +9,25 @@ function AuthCard({ mode, onAuthenticated }: { mode: 'setup' | 'login'; onAuthen
   const [pending, setPending] = useState(false);
   const isSetup = mode === 'setup';
 
+  const setupProblem = (candidate: string): string | null => {
+    if (candidate.length < 12) return 'Password must be at least 12 characters.';
+    if (!/\d/.test(candidate)) return 'Password must include at least one number.';
+    if (!/[^a-zA-Z0-9]/.test(candidate)) return 'Password must include at least one special character.';
+    return null;
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (isSetup && password !== confirm) {
-      setError('Passwords do not match.');
-      return;
+    if (isSetup) {
+      const problem = setupProblem(password);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+      if (password !== confirm) {
+        setError('Passwords do not match.');
+        return;
+      }
     }
     setPending(true);
     setError('');
@@ -33,17 +47,19 @@ function AuthCard({ mode, onAuthenticated }: { mode: 'setup' | 'login'; onAuthen
         <div>
           <h1 className="text-2xl font-semibold text-white">{isSetup ? 'Secure your dashboard' : 'Stake Dashboard'}</h1>
           <p className="mt-2 text-sm text-slate-400">
-            {isSetup ? 'Choose the admin password used to protect your financial dashboard.' : 'Enter your admin password to continue.'}
+            {isSetup
+              ? 'Choose the admin password used to protect your financial dashboard. At least 12 characters, including a number and a special character.'
+              : 'Enter your admin password to continue.'}
           </p>
         </div>
         <label className="block text-sm text-slate-300">
           Password
-          <input autoFocus type="password" autoComplete={isSetup ? 'new-password' : 'current-password'} minLength={isSetup ? 10 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-none ring-sky-500 focus:ring-1" />
+          <input autoFocus type="password" autoComplete={isSetup ? 'new-password' : 'current-password'} minLength={isSetup ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-none ring-sky-500 focus:ring-1" />
         </label>
         {isSetup ? (
           <label className="block text-sm text-slate-300">
             Confirm password
-            <input type="password" autoComplete="new-password" minLength={10} required value={confirm} onChange={(event) => setConfirm(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-none ring-sky-500 focus:ring-1" />
+            <input type="password" autoComplete="new-password" minLength={12} required value={confirm} onChange={(event) => setConfirm(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-none ring-sky-500 focus:ring-1" />
           </label>
         ) : null}
         {error ? <p className="rounded bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
