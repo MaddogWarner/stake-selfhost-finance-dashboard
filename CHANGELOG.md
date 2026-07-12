@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-12 — v0.5.1
+
+### Admin password policy
+
+- Admin passwords now require a minimum of 12 characters with at least one number and one special character, enforced server-side and mirrored in the setup wizard with matching messages. Existing passwords are unaffected until reset.
+- App version → `0.5.1`.
+
 ## 2026-07-11 — v0.5.0
 
 ### Security hardening
