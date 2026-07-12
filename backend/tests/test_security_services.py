@@ -48,15 +48,19 @@ def request(headers=()):
 
 class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
     def test_password_policy_and_verification(self):
-        validate_password("correct horse battery staple")
+        validate_password("correct horse battery staple 9!")
         with self.assertRaises(ValueError):
-            validate_password("too-short")
+            validate_password("short 1!")  # under 12 characters
         with self.assertRaises(ValueError):
-            validate_password("x" * 73)
+            validate_password("x1!" + "x" * 70)  # over 72 bytes
+        with self.assertRaises(ValueError):
+            validate_password("no digits here!!")  # missing number
+        with self.assertRaises(ValueError):
+            validate_password("NoSpecials12345")  # missing special character
         hashed = bcrypt.hashpw(
-            b"correct horse battery staple", bcrypt.gensalt()
+            b"correct horse battery staple 9!", bcrypt.gensalt()
         ).decode()
-        self.assertTrue(verify_password("correct horse battery staple", hashed))
+        self.assertTrue(verify_password("correct horse battery staple 9!", hashed))
         self.assertFalse(verify_password("incorrect password", hashed))
 
     def test_crypto_round_trip_and_wrong_key(self):

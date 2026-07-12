@@ -23,11 +23,15 @@ async def get_password_hash(db: AsyncSession) -> str | None:
 
 
 def validate_password(password: str) -> None:
-    length = len(password.encode())
-    if length < 10:
-        raise ValueError("Password must be at least 10 characters.")
-    if length > 72:
+    if len(password) < 12:
+        raise ValueError("Password must be at least 12 characters.")
+    # bcrypt silently truncates beyond 72 bytes; reject instead.
+    if len(password.encode()) > 72:
         raise ValueError("Password must be no more than 72 bytes.")
+    if not any(char.isdigit() for char in password):
+        raise ValueError("Password must include at least one number.")
+    if not any(not char.isalnum() for char in password):
+        raise ValueError("Password must include at least one special character.")
 
 
 async def set_password(db: AsyncSession, password: str) -> bool:
