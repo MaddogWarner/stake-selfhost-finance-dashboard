@@ -39,7 +39,7 @@ jobs:
         run: bandit -r . -ll -x ./.git,./node_modules,./frontend --quiet
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
 
