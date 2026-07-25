@@ -16,6 +16,6 @@ cryptography==49.0.0
 
 # Runtime deps of stake==0.13.0 (installed with --no-deps in the Dockerfile to bypass
 # its python-dotenv<0.14 pin). python-dotenv (above), pydantic (above) also satisfy it.
-aiohttp==3.14.1
+aiohttp==3.14.3
 inflection==0.5.1
 single-version==1.6.0
