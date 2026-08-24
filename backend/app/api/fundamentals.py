@@ -64,7 +64,7 @@ async def get_fundamentals(
                 "pe_ratio": ratios.get("priceToEarningsRatioTTM"),
                 "fetched_at": datetime.now(timezone.utc),
             }
-        except Exception:
+        except Exception:  # noqa: BLE001 - any FMP failure falls back to Yahoo
             # FMP unavailable (quota, plan restriction, retired endpoint) -> Yahoo Finance.
             payload = await _yfinance_payload()
 

@@ -14,7 +14,7 @@ def normalise_ticker(ticker: str, exchange: str) -> str:
 
 def _clean_float(value: Any) -> float | None:
     try:
-        if value is None or value != value:
+        if value is None or value != value:  # noqa: PLR0124 - canonical NaN check
             return None
         return float(value)
     except (TypeError, ValueError):
