@@ -114,10 +114,13 @@ cd stake-selfhost-finance-dashboard
 cp .env.example .env            # optional: add FMP/Stake creds (see Credentials)
 
 cd docker
-TAG=0.2.0 docker compose -f docker-compose.ghcr.yml up -d
+TAG=0.5.2 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
-- Pin a release with `TAG` (e.g. `0.2.0`), or omit it to use `latest`.
+- Pin a release with `TAG` (e.g. `0.5.2`), or omit it to use `latest`.
+- `latest` tracks the most recent tagged release, not the `main` branch. Merges to
+  `main` publish `main` and `sha-<short>` tags only; those are unreleased builds and
+  are not recommended for normal use. A fix is only in `latest` once a release is cut.
 - HTTP and HTTPS are published on `127.0.0.1:3000` and `127.0.0.1:3443`; HTTP redirects to HTTPS. For LAN use, set `FRONTEND_HTTP_BIND` and `FRONTEND_HTTPS_BIND`. If the HTTPS host port changes, set `HTTPS_PORT` to the same port so redirects remain correct.
 - Images are published publicly by CI; if you make the packages private, run `docker login ghcr.io` first.
 - Update to a new release: `TAG=<version> docker compose -f docker-compose.ghcr.yml pull && ... up -d`.
