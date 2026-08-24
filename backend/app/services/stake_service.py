@@ -60,7 +60,7 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
         token = await authenticate(
             settings.stake_username, settings.stake_password, settings.stake_otp
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - third-party auth failures are non-fatal
         logger.error("Stake authentication failed: %s", exc)
         return
 
@@ -77,8 +77,8 @@ async def bootstrap_stake_token(db: AsyncSession) -> None:
         object.__setattr__(settings, "stake_password", None)
         object.__setattr__(settings, "stake_username", None)
         object.__setattr__(settings, "stake_otp", None)
-    except Exception:
-        pass
+    except (AttributeError, TypeError) as exc:
+        logger.warning("Unable to clear Stake credentials from memory: %s", exc)
 
     logger.warning(
         "Stake session token obtained and saved. It is now persisted in the database; "

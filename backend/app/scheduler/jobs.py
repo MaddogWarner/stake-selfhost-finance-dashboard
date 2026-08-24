@@ -28,9 +28,7 @@ async def _unique_tickers() -> list[tuple[str, str]]:
         watchlist = (
             await db.execute(select(Watchlist.ticker, Watchlist.exchange))
         ).all()
-    return sorted(
-        set((ticker, exchange) for ticker, exchange in [*holdings, *watchlist])
-    )
+    return sorted(set([*holdings, *watchlist]))
 
 
 def is_asx_open(now_utc: datetime | None = None) -> bool:
