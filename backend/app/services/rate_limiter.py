@@ -12,7 +12,9 @@ FMP_DAILY_LIMIT = 200
 async def can_call_fmp(db: AsyncSession) -> bool:
     result = await db.execute(
         select(ApiUsage.call_count).where(
-            ApiUsage.provider == "fmp", ApiUsage.date == date.today()
+            ApiUsage.provider == "fmp",
+            # Preserve the existing server-local FMP quota day boundary.
+            ApiUsage.date == date.today(),  # noqa: DTZ011
         )
     )
     count = result.scalar_one_or_none() or 0
@@ -20,7 +22,11 @@ async def can_call_fmp(db: AsyncSession) -> bool:
 
 
 async def record_fmp_call(db: AsyncSession, count: int = 1) -> None:
-    stmt = insert(ApiUsage).values(provider="fmp", date=date.today(), call_count=count)
+    stmt = insert(ApiUsage).values(
+        provider="fmp",
+        date=date.today(),  # noqa: DTZ011 - preserve server-local quota day
+        call_count=count,
+    )
     stmt = stmt.on_conflict_do_update(
         index_elements=[ApiUsage.provider, ApiUsage.date],
         set_={"call_count": ApiUsage.call_count + count, "updated_at": func.now()},
