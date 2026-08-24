@@ -12,9 +12,9 @@ from app.db.redis import get_redis
 from app.db.session import get_db
 from app.models.api_usage import ApiUsage
 from app.models.holding import Holding
-from app.services import stake_client
-from app.services.rate_limiter import FMP_DAILY_LIMIT
+from app.services import stake_client, stake_service
 from app.services.rate_limit_service import rate_limit
+from app.services.rate_limiter import FMP_DAILY_LIMIT
 from app.services.settings_service import (
     VALID_SOURCES,
     get_data_source,
@@ -23,7 +23,6 @@ from app.services.settings_service import (
     set_data_source,
     set_stake_token,
 )
-from app.services import stake_service
 from app.services.stake_service import get_cached_token, set_cached_token
 
 router = APIRouter()
@@ -85,7 +84,9 @@ async def get_usage(db: AsyncSession = Depends(get_db)) -> dict:
     count = (
         await db.execute(
             select(ApiUsage.call_count).where(
-                ApiUsage.provider == "fmp", ApiUsage.date == date.today()
+                ApiUsage.provider == "fmp",
+                # Match the outbound limiter's existing server-local quota day.
+                ApiUsage.date == date.today(),  # noqa: DTZ011
             )
         )
     ).scalar_one_or_none() or 0
@@ -138,7 +139,7 @@ async def set_stake_token_endpoint(
         raise HTTPException(status_code=400, detail="Token must not be empty.")
     try:
         await stake_client.validate_token(token)
-    except Exception as exc:  # noqa: BLE001 - surface any auth/library failure to the user
+    except Exception as exc:
         raise HTTPException(
             status_code=400, detail=f"Stake rejected this token: {exc}"
         ) from exc
@@ -165,7 +166,7 @@ async def stake_login(
     otp = payload.otp.strip() if payload.otp else None
     try:
         token = await stake_service.authenticate(username, password, otp)
-    except Exception as exc:  # noqa: BLE001 - surface auth failure to the user
+    except Exception as exc:
         logger.warning("Stake credential login failed: %s", exc)
         # 400, not 401: in this app 401 means the dashboard session is invalid
         # (the frontend interceptor logs out on it); a Stake rejection is a

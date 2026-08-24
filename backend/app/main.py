@@ -2,20 +2,19 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from alembic import command
 from alembic.config import Config
-from fastapi import FastAPI
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from alembic import command
 from app.api import admin, auth, fundamentals, holdings, news, prices
 from app.db.redis import close_redis
 from app.db.session import AsyncSessionLocal
 from app.scheduler.registry import start_scheduler, stop_scheduler
-from app.services.stake_service import bootstrap_stake_token
 from app.services.auth_service import require_auth
 from app.services.crypto_service import initialise_crypto
 from app.services.rate_limit_service import rate_limit
+from app.services.stake_service import bootstrap_stake_token
 from app.version import __version__
 
 
