@@ -64,20 +64,18 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(verify_password("incorrect password", hashed))
 
     def test_crypto_round_trip_and_wrong_key(self):
-        with tempfile.TemporaryDirectory() as directory:
-            with (
-                patch.object(
-                    crypto_service, "KEY_PATH", Path(directory) / "fernet.key"
-                ),
-                patch.object(crypto_service.settings, "token_encryption_key", None),
-            ):
-                crypto_service.initialise_crypto()
-                encrypted = crypto_service.encrypt("secret")
-                self.assertEqual(crypto_service.decrypt(encrypted), "secret")
-                self.assertEqual(crypto_service.KEY_PATH.stat().st_mode & 0o777, 0o600)
-                crypto_service._fernet = Fernet(Fernet.generate_key())
-                with self.assertRaises(InvalidToken):
-                    crypto_service.decrypt(encrypted)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(crypto_service, "KEY_PATH", Path(directory) / "fernet.key"),
+            patch.object(crypto_service.settings, "token_encryption_key", None),
+        ):
+            crypto_service.initialise_crypto()
+            encrypted = crypto_service.encrypt("secret")
+            self.assertEqual(crypto_service.decrypt(encrypted), "secret")
+            self.assertEqual(crypto_service.KEY_PATH.stat().st_mode & 0o777, 0o600)
+            crypto_service._fernet = Fernet(Fernet.generate_key())
+            with self.assertRaises(InvalidToken):
+                crypto_service.decrypt(encrypted)
 
     async def test_session_lifecycle(self):
         redis = FakeRedis()

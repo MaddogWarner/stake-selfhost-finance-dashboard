@@ -1,0 +1,23 @@
+target-version = "py312"
+
+[lint]
+select = [
+    "E722",
+    "E902",
+    "W605",
+    "F",
+    "I001",
+    "UP007",
+    "UP035",
+    "B008",
+    "BLE001",
+    "SIM117",
+    "S110",
+    "PLR0124",
+    "C401",
+    "DTZ011",
+    "RUF100",
+]
+
+# FastAPI intentionally uses Depends() calls as parameter defaults.
+ignore = ["B008"]
