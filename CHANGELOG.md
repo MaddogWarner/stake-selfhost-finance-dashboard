@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-08-24 — v0.5.2
+
+### Security
+
+- `cryptography` 49.0.0 → 50.0.0 (backend) and `axios` 1.16.1 → 1.18.0 (frontend),
+  closing the advisories for both (#58, #51).
+- `aiohttp` 3.14.1 → 3.14.3, `fastapi` 0.139.0 → 0.139.2, `postcss` 8.5.15 → 8.5.26,
+  `yfinance` 1.5.1 → 1.6.0 (#53, #50, #60, #56).
+
+### Fixed
+
+- The v0.5.1 tag was cut one commit early, at the same commit as v0.5.0, so the
+  12-character admin password policy documented under v0.5.1 was never present in a
+  published image. It ships here. Admin passwords require a minimum of 12 characters
+  with at least one number and one special character, enforced server-side and
+  mirrored in the setup wizard. Existing passwords are unaffected until reset (#47).
+- Pinned Ruff to 0.16.0 and cleared the backend lint failures that were blocking CI (#59).
+
+### Documentation
+
+- README now states that `latest` tracks the most recent release, not `main`, and the
+  pinned-version examples reference a current release rather than 0.2.0.
+
+- App version → `0.5.2`.
+
 ## 2026-07-12 — v0.5.1
 
 ### Admin password policy
