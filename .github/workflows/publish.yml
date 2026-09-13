@@ -74,17 +74,6 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
           no-cache-filters: runtime
 
-      - name: DEBUG locate duplicate python packages
-        run: |
-          docker run --rm --entrypoint sh stake-backend:scan-${{ github.sha }} -c '
-            echo "--- dist-info for setuptools/msgpack ---"
-            find / -maxdepth 8 \( -name "setuptools-*.dist-info" -o -name "msgpack-*.dist-info" -o -name "setuptools*.egg-info" \) 2>/dev/null
-            echo "--- python interpreters ---"
-            ls -d /usr/lib/python3* /usr/local/lib/python3* 2>/dev/null
-            echo "--- dist-packages ---"
-            ls /usr/lib/python3/dist-packages 2>/dev/null | head -30
-          '
-
       # Report-only: records everything, including CVEs with no vendor patch, so
       # they stay visible in code scanning. The gate below decides what blocks.
       - name: Trivy scan — backend
@@ -102,6 +91,7 @@ jobs:
           # showed 1.2.2 and 84.0.0. Correct results matter more than a faster
           # scan on the step that decides whether an image ships.
           cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
 
       - name: Upload Trivy results — backend
         uses: github/codeql-action/upload-sarif@v4
@@ -124,6 +114,7 @@ jobs:
           exit-code: '1'
           skip-setup-trivy: true
           cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
 
       - id: push
         if: github.event_name != 'pull_request'
@@ -193,6 +184,7 @@ jobs:
           # showed 1.2.2 and 84.0.0. Correct results matter more than a faster
           # scan on the step that decides whether an image ships.
           cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
 
       - name: Upload Trivy results — frontend
         uses: github/codeql-action/upload-sarif@v4
@@ -212,6 +204,7 @@ jobs:
           exit-code: '1'
           skip-setup-trivy: true
           cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
 
       - id: push
         if: github.event_name != 'pull_request'
