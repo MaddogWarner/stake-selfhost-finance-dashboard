@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-09-13 — v0.5.3
+
+### Security
+
+- **Container images are now gated on Trivy before they are published.** Previously
+  `publish.yml` built each image, pushed it to GHCR, and only then scanned it with
+  `exit-code: 0` — a fixable CRITICAL shipped to users and was merely reported. Each
+  image is now built single-arch and scanned first; only if the gate passes is the
+  multi-arch image built and pushed. A failed gate also blocks the GitHub release (#69).
+- **Both base images are patched at build time.** The gate's first run found 12 fixable
+  findings in the backend image (3 CRITICAL, including `perl-base` CVE-2026-13221 and
+  `gzip` CVE-2026-41992) and 7 HIGH in the frontend. `python:3.12-slim` and
+  `nginx:alpine` both trail their distributions, so the images now run `apt-get upgrade`
+  and `apk upgrade` respectively, in a stage excluded from the layer cache so a cached
+  layer cannot replay the old package set.
+- **The published backend image no longer contains the git history.** Its Dockerfile
+  ends with `COPY . .` and the repository had no `.dockerignore`, so every published
+  image included the full `.git` directory.
+- `pip` and `setuptools` are upgraded in the backend image (`setuptools` 70.3.0 is
+  affected by CVE-2025-47273), and `msgpack` is pinned to `>=1.2.1` for
+  GHSA-6v7p-g79w-8964. Both arrive with the base image or transitively, so Dependabot
+  never offered a PR for either.
+- `aquasecurity/trivy-action` pinned to a release SHA at all five call sites across
+  `publish.yml` and `security.yml`. It had been tracking `@master` — a mutable
+  third-party reference in workflows holding `security-events: write`.
+
+### Dependencies
+
+- `bcrypt` 4.3.0 → 5.0.0 (#49). Major version. The app uses only `hashpw`, `gensalt`
+  and `checkpw`, all retained in 5.x, and the hash format is unchanged — **existing
+  passwords continue to work and no reset is required**.
+- `fastapi` 0.139.2 → 0.141.1 (#55), `redis` 8.0.1 → 8.1.0 (#57),
+  `yfinance` 1.6.0 → 1.7.0 (#67), `sqlalchemy` 2.0.51 → 2.0.52 (#68),
+  `pydantic` 2.13.4 → 2.13.5 (#66), `uvicorn` 0.51.0 → 0.52.4 (#63),
+  `python-dotenv` 1.2.2 → 1.2.3 (#62).
+- Frontend dev dependencies: `browserslist` and `postcss-selector-parser` (#64, #65).
+
+### Known issues
+
+- The publish gate blocks on CRITICAL only, not HIGH. Two HIGH findings are reported
+  against packages that are not present in the image — `setuptools` 70.3.0 and
+  `msgpack` 1.1.2, where the image demonstrably contains 84.0.0 and 1.2.2. Trivy's
+  scan cache and the Docker layer cache were both tested and ruled out as causes. Until
+  that is resolved the gate would block every publish on a false positive, so HIGH is
+  reported to code scanning but not gated. The threshold should be widened once the
+  backend Dockerfile is restructured as multi-stage.
+
+- App version → `0.5.3`.
+
 ## 2026-08-24 — v0.5.2
 
 ### Security
