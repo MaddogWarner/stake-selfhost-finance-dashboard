@@ -16,6 +16,15 @@ permissions:
   packages: write
   security-events: write
 
+# Each image is built twice on purpose. The first build is single-arch and
+# loaded into the local daemon so Trivy can scan a real image before anything
+# leaves the runner; only if the gate passes does the second, multi-arch build
+# push to GHCR. Previously the push happened first and Trivy ran afterwards at
+# exit-code 0, so a fixable CRITICAL shipped to users and was merely reported.
+#
+# The scan build is amd64 only. `load: true` cannot load a multi-platform
+# result, and the OS package inventory Trivy inspects is the same across arches.
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -42,22 +51,24 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
-      - id: push
+      - name: Build image for scan
         uses: docker/build-push-action@v7
         with:
           context: ./backend
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          load: true
+          push: false
+          tags: stake-backend:scan-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
+      # Report-only: records everything, including CVEs with no vendor patch, so
+      # they stay visible in code scanning. The gate below decides what blocks.
       - name: Trivy scan — backend
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
-          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          image-ref: stake-backend:scan-${{ github.sha }}
           format: sarif
           output: trivy-backend.sarif
           severity: CRITICAL,HIGH
@@ -69,6 +80,31 @@ jobs:
         with:
           sarif_file: trivy-backend.sarif
           category: container-backend
+
+      # Blocks only on findings we can act on. `ignore-unfixed` keeps the
+      # unpatchable Debian base-image CVEs from holding every release hostage;
+      # they are not lost, the report scan above already uploaded them.
+      - name: Trivy gate — backend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-backend:scan-${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+
+      - id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
   frontend:
     runs-on: ubuntu-latest
@@ -95,6 +131,47 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
+      - name: Build image for scan
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          load: true
+          push: false
+          tags: stake-frontend:scan-${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_URL=${{ inputs.vite_api_url }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Trivy scan — frontend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-frontend:scan-${{ github.sha }}
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy results — frontend
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: container-frontend
+
+      - name: Trivy gate — frontend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-frontend:scan-${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+
       - id: push
         uses: docker/build-push-action@v7
         with:
@@ -108,25 +185,9 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-      - name: Trivy scan — frontend
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-
-      - name: Upload Trivy results — frontend
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: container-frontend
-
   release:
     # Cut a GitHub Release once the images for a version tag are published.
+    # Depends on both image jobs, so a failed gate also blocks the release.
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [backend, frontend]
     runs-on: ubuntu-latest
