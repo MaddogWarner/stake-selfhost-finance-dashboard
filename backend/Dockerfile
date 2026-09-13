@@ -18,9 +18,11 @@ COPY requirements.txt .
 # stake==0.13.0 is installed --no-deps to bypass its python-dotenv<0.14 pin (conflicts
 # with pydantic-settings). Its actual runtime deps (aiohttp, inflection, single-version,
 # pydantic, python-dotenv) are pinned in requirements.txt so `import stake` works.
-# pip itself is upgraded first: the version bundled in the base image is old
-# enough to carry its own advisories, and it travels in the shipped layer.
-RUN pip install --no-cache-dir --upgrade pip \
+# pip and setuptools are upgraded first: the versions bundled in the base image
+# are old enough to carry their own advisories (setuptools 70.3.0 is affected by
+# CVE-2025-47273, a path traversal) and they travel in the shipped layer, which
+# is why Dependabot never offers a PR for them.
+RUN pip install --no-cache-dir --upgrade pip setuptools \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir --no-deps stake==0.13.0
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
