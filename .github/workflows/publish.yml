@@ -74,6 +74,17 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
           no-cache-filters: runtime
 
+      - name: DEBUG locate duplicate python packages
+        run: |
+          docker run --rm --entrypoint sh stake-backend:scan-${{ github.sha }} -c '
+            echo "--- dist-info for setuptools/msgpack ---"
+            find / -maxdepth 8 \( -name "setuptools-*.dist-info" -o -name "msgpack-*.dist-info" -o -name "setuptools*.egg-info" \) 2>/dev/null
+            echo "--- python interpreters ---"
+            ls -d /usr/lib/python3* /usr/local/lib/python3* 2>/dev/null
+            echo "--- dist-packages ---"
+            ls /usr/lib/python3/dist-packages 2>/dev/null | head -30
+          '
+
       # Report-only: records everything, including CVEs with no vendor patch, so
       # they stay visible in code scanning. The gate below decides what blocks.
       - name: Trivy scan — backend
