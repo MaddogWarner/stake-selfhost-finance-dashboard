@@ -29,6 +29,11 @@ permissions:
 #
 # The scan build is amd64 only. `load: true` cannot load a multi-platform
 # result, and the OS package inventory Trivy inspects is the same across arches.
+#
+# Both Dockerfiles patch their base image in a stage named `runtime`, so that
+# stage is excluded from the layer cache on every build. A cached layer would
+# replay the package set from whenever it was first built, quietly undoing the
+# upgrade and letting a patched base go unnoticed.
 
 jobs:
   backend:
@@ -67,6 +72,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+          no-cache-filters: runtime
 
       # Report-only: records everything, including CVEs with no vendor patch, so
       # they stay visible in code scanning. The gate below decides what blocks.
@@ -112,6 +118,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+          no-cache-filters: runtime
 
   frontend:
     runs-on: ubuntu-latest
@@ -151,6 +158,7 @@ jobs:
             VITE_API_URL=${{ inputs.vite_api_url }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+          no-cache-filters: runtime
 
       - name: Trivy scan — frontend
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -193,6 +201,7 @@ jobs:
             VITE_API_URL=${{ inputs.vite_api_url }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+          no-cache-filters: runtime
 
   release:
     # Cut a GitHub Release once the images for a version tag are published.
