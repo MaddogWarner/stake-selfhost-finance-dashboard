@@ -85,6 +85,12 @@ jobs:
           output: trivy-backend.sarif
           severity: CRITICAL,HIGH
           exit-code: '0'
+          # Trivy's scan cache is restored across runs and was serving stale
+          # analysis: a gate run reported msgpack 1.1.2 and setuptools 70.3.0
+          # for an image whose own file inventory, printed by that same step,
+          # showed 1.2.2 and 84.0.0. Correct results matter more than a faster
+          # scan on the step that decides whether an image ships.
+          cache: false
 
       - name: Upload Trivy results — backend
         uses: github/codeql-action/upload-sarif@v4
@@ -106,6 +112,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           skip-setup-trivy: true
+          cache: false
 
       - id: push
         if: github.event_name != 'pull_request'
@@ -169,6 +176,12 @@ jobs:
           output: trivy-frontend.sarif
           severity: CRITICAL,HIGH
           exit-code: '0'
+          # Trivy's scan cache is restored across runs and was serving stale
+          # analysis: a gate run reported msgpack 1.1.2 and setuptools 70.3.0
+          # for an image whose own file inventory, printed by that same step,
+          # showed 1.2.2 and 84.0.0. Correct results matter more than a faster
+          # scan on the step that decides whether an image ships.
+          cache: false
 
       - name: Upload Trivy results — frontend
         uses: github/codeql-action/upload-sarif@v4
@@ -187,6 +200,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           skip-setup-trivy: true
+          cache: false
 
       - id: push
         if: github.event_name != 'pull_request'
