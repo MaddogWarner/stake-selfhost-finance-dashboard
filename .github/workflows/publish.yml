@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
     tags: ["v*.*.*"]
+  # Run on PRs too so the gate is exercised before merge, not after. The login
+  # and push steps are skipped for pull_request events; everything up to and
+  # including the gate still runs.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       vite_api_url:
@@ -16,6 +21,20 @@ permissions:
   packages: write
   security-events: write
 
+# Each image is built twice on purpose. The first build is single-arch and
+# loaded into the local daemon so Trivy can scan a real image before anything
+# leaves the runner; only if the gate passes does the second, multi-arch build
+# push to GHCR. Previously the push happened first and Trivy ran afterwards at
+# exit-code 0, so a fixable CRITICAL shipped to users and was merely reported.
+#
+# The scan build is amd64 only. `load: true` cannot load a multi-platform
+# result, and the OS package inventory Trivy inspects is the same across arches.
+#
+# Both Dockerfiles patch their base image in a stage named `runtime`, so that
+# stage is excluded from the layer cache on every build. A cached layer would
+# replay the package set from whenever it was first built, quietly undoing the
+# upgrade and letting a patched base go unnoticed.
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -23,6 +42,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -42,7 +62,74 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
+      - name: Build image for scan
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          load: true
+          push: false
+          tags: stake-backend:scan-${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+          no-cache-filters: runtime
+
+      # Report-only: records everything, including CVEs with no vendor patch, so
+      # they stay visible in code scanning. The gate below decides what blocks.
+      - name: Trivy scan — backend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-backend:scan-${{ github.sha }}
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+          # Trivy's scan cache is restored across runs and was serving stale
+          # analysis: a gate run reported msgpack 1.1.2 and setuptools 70.3.0
+          # for an image whose own file inventory, printed by that same step,
+          # showed 1.2.2 and 84.0.0. Correct results matter more than a faster
+          # scan on the step that decides whether an image ships.
+          cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
+
+      - name: Upload Trivy results — backend
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-backend.sarif
+          category: container-backend
+
+      # Blocks only on findings we can act on. `ignore-unfixed` keeps the
+      # unpatchable Debian base-image CVEs from holding every release hostage;
+      # they are not lost, the report scan above already uploaded them.
+      - name: Trivy gate — backend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-backend:scan-${{ github.sha }}
+          format: table
+          # CRITICAL only for now, deliberately narrower than the report scan
+          # above (which stays CRITICAL,HIGH so nothing goes unseen). Two HIGH
+          # findings — setuptools CVE-2025-47273 and msgpack GHSA-6v7p-g79w-8964
+          # — are reported against packages that are not in the image: a probe
+          # inside the scanned tag found only setuptools 84.0.0 and msgpack
+          # 1.2.2, and the build installs those fresh. The likely cause is Trivy
+          # reporting a lower layer that a higher layer replaced. Gating on HIGH
+          # today would block every publish on a false positive.
+          #
+          # Widen back to CRITICAL,HIGH once that is resolved — most likely by
+          # restructuring backend/Dockerfile as multi-stage so no superseded
+          # layer exists to misreport.
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+          cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
+
       - id: push
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v7
         with:
           context: ./backend
@@ -52,23 +139,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
-
-      - name: Trivy scan — backend
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
-          format: sarif
-          output: trivy-backend.sarif
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-
-      - name: Upload Trivy results — backend
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: trivy-backend.sarif
-          category: container-backend
+          no-cache-filters: runtime
 
   frontend:
     runs-on: ubuntu-latest
@@ -76,6 +147,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -95,7 +167,71 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
+      - name: Build image for scan
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          load: true
+          push: false
+          tags: stake-frontend:scan-${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_URL=${{ inputs.vite_api_url }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          no-cache-filters: runtime
+
+      - name: Trivy scan — frontend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-frontend:scan-${{ github.sha }}
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+          # Trivy's scan cache is restored across runs and was serving stale
+          # analysis: a gate run reported msgpack 1.1.2 and setuptools 70.3.0
+          # for an image whose own file inventory, printed by that same step,
+          # showed 1.2.2 and 84.0.0. Correct results matter more than a faster
+          # scan on the step that decides whether an image ships.
+          cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
+
+      - name: Upload Trivy results — frontend
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: container-frontend
+
+      - name: Trivy gate — frontend
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: stake-frontend:scan-${{ github.sha }}
+          format: table
+          # CRITICAL only for now, deliberately narrower than the report scan
+          # above (which stays CRITICAL,HIGH so nothing goes unseen). Two HIGH
+          # findings — setuptools CVE-2025-47273 and msgpack GHSA-6v7p-g79w-8964
+          # — are reported against packages that are not in the image: a probe
+          # inside the scanned tag found only setuptools 84.0.0 and msgpack
+          # 1.2.2, and the build installs those fresh. The likely cause is Trivy
+          # reporting a lower layer that a higher layer replaced. Gating on HIGH
+          # today would block every publish on a false positive.
+          #
+          # Widen back to CRITICAL,HIGH once that is resolved — most likely by
+          # restructuring backend/Dockerfile as multi-stage so no superseded
+          # layer exists to misreport.
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+          cache: false
+          cache-dir: ${{ runner.temp }}/trivy-${{ github.run_id }}-${{ github.job }}
+
       - id: push
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v7
         with:
           context: ./frontend
@@ -107,26 +243,11 @@ jobs:
             VITE_API_URL=${{ inputs.vite_api_url }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
-
-      - name: Trivy scan — frontend
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-
-      - name: Upload Trivy results — frontend
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: container-frontend
+          no-cache-filters: runtime
 
   release:
     # Cut a GitHub Release once the images for a version tag are published.
+    # Depends on both image jobs, so a failed gate also blocks the release.
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [backend, frontend]
     runs-on: ubuntu-latest

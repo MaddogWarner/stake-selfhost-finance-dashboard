@@ -1,0 +1,19 @@
+# The Dockerfile ends with `COPY . .`, so anything not excluded here is baked
+# into a publicly published image. `.git` in particular would ship the entire
+# commit history.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+tests/
+*.md
+Dockerfile
+.dockerignore
