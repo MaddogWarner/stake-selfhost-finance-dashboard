@@ -24,4 +24,4 @@ single-version==1.6.0
 # app imports it. msgpack arrives via requests-cache; GHSA-6v7p-g79w-8964 (high,
 # out-of-bounds read) is fixed in 1.2.1. Remove this pin once a direct dependency
 # requires >=1.2.1 on its own.
-msgpack>=1.2.1
+msgpack>=1.2.2
