@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-16 — v0.5.4
+
+### Dependencies
+
+- `alembic` 1.18.5 → 1.20.0
+- `uvicorn` 0.52.4 → 0.53.0
+- `pydantic-settings` 2.14.2 → 2.15.0
+- `cryptography` 50.0.0 → 50.0.1
+- `msgpack` >=1.2.1 → >=1.2.2
+
 ## 2026-09-13 — v0.5.3
 
 ### Security
