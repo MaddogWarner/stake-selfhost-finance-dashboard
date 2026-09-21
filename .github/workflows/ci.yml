@@ -21,6 +21,10 @@ jobs:
         run: ruff check backend/
       - name: Ruff format check
         run: ruff format --check backend/
+      - name: Install project dependencies
+        run: pip install -r backend/requirements.txt pytest
+      - name: Run tests
+        run: pytest backend/tests/ -q
 
   frontend:
     name: frontend
