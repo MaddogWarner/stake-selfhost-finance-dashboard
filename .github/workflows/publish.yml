@@ -169,6 +169,60 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
           no-cache-filters: runtime
 
+      - name: Start disposable stack for security header checks
+        working-directory: docker
+        env:
+          COMPOSE_PROJECT_NAME: security-headers
+          FRONTEND_IMAGE: stake-frontend:scan-${{ github.sha }}
+        run: |
+          printf 'services:\n  frontend:\n    image: %s\n' "$FRONTEND_IMAGE" > docker-compose.test.yml
+          export COMPOSE_FILE=docker-compose.yml:docker-compose.test.yml
+          docker compose build backend
+          docker compose up -d --no-build
+          for attempt in $(seq 1 60); do
+            if curl -skf https://127.0.0.1:3443/api/auth/status; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+
+      - name: Check security headers on success and error responses
+        run: python3 scripts/check-security-headers.py
+
+      - name: Install isolated browser test tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/csp-browser"
+          "$RUNNER_TEMP/csp-browser/bin/pip" install playwright==1.58.0
+          "$RUNNER_TEMP/csp-browser/bin/python" -m playwright install --with-deps chromium
+
+      - name: Check login, holdings and charts with zero CSP violations
+        working-directory: docker
+        env:
+          COMPOSE_PROJECT_NAME: security-headers
+          COMPOSE_FILE: docker-compose.yml:docker-compose.test.yml
+        run: '"$RUNNER_TEMP/csp-browser/bin/python" ../scripts/check-csp-browser.py'
+
+      - name: Check headers on nginx upstream failure
+        working-directory: docker
+        env:
+          COMPOSE_PROJECT_NAME: security-headers
+          COMPOSE_FILE: docker-compose.yml:docker-compose.test.yml
+        run: |
+          # Keep the backend network alive but refuse the proxy connection immediately.
+          docker compose exec -T frontend sh -c 'sed -i "s|http://backend:8000|http://backend:1|" /etc/nginx/conf.d/default.conf && nginx -s reload'
+          sleep 1
+          python3 ../scripts/check-security-headers.py --upstream-unavailable
+
+      - name: Stop disposable security test stack
+        if: always()
+        working-directory: docker
+        env:
+          COMPOSE_PROJECT_NAME: security-headers
+          COMPOSE_FILE: docker-compose.yml:docker-compose.test.yml
+        run: docker compose down
+
       - name: Trivy scan — frontend
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
