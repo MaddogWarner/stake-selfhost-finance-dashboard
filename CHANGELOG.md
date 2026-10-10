@@ -9,6 +9,10 @@
   and card-shadow styling. Removes the vulnerable transitive `postcss-selector-parser`.
 - Frontend browser requirements are now Safari 16.4+, Chrome 111+ and Firefox 128+.
 
+### Security
+
+- Added HTTP security response headers (clickjacking, MIME sniffing, referrer).
+
 ## 2026-09-16 — v0.5.4
 
 ### Dependencies
