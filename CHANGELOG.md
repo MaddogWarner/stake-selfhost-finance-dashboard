@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 2026-10-10 — v0.5.4
 
 ### Dependencies
 
@@ -9,19 +9,15 @@
   and card-shadow styling. Removes the vulnerable transitive `postcss-selector-parser`.
 - Frontend browser requirements are now Safari 16.4+, Chrome 111+ and Firefox 128+.
 
-### Security
-
-- Added HTTP security response headers (clickjacking, MIME sniffing, referrer).
-
-## 2026-09-16 — v0.5.4
-
-### Dependencies
-
 - `alembic` 1.18.5 → 1.20.0
 - `uvicorn` 0.52.4 → 0.53.0
 - `pydantic-settings` 2.14.2 → 2.15.0
 - `cryptography` 50.0.0 → 50.0.1
 - `msgpack` >=1.2.1 → >=1.2.2
+
+### Security
+
+- Added HTTP security response headers (clickjacking, MIME sniffing, referrer).
 
 ## 2026-09-13 — v0.5.3
 
