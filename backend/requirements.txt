@@ -1,6 +1,6 @@
-fastapi==0.141.1
+fastapi==0.142.2
 uvicorn[standard]==0.54.0
-sqlalchemy[asyncio]==2.1.1
+sqlalchemy[asyncio]==2.1.3
 asyncpg==0.31.0
 alembic==1.20.0
 pydantic-settings==2.15.0
@@ -12,7 +12,7 @@ requests-cache==1.3.3
 httpx==0.28.1
 python-dotenv==1.2.4
 bcrypt==5.0.0
-cryptography==50.0.1
+cryptography==50.0.2
 
 # Runtime deps of stake==0.13.0 (installed with --no-deps in the Dockerfile to bypass
 # its python-dotenv<0.14 pin). python-dotenv (above), pydantic (above) also satisfy it.
@@ -24,4 +24,4 @@ single-version==1.6.0
 # app imports it. msgpack arrives via requests-cache; GHSA-6v7p-g79w-8964 (high,
 # out-of-bounds read) is fixed in 1.2.1. Remove this pin once a direct dependency
 # requires >=1.2.1 on its own.
-msgpack>=1.2.2
+msgpack>=1.2.3
