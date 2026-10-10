@@ -21,7 +21,7 @@ export default function SettingsPanel() {
         value={settings?.data_source ?? 'both'}
         disabled={isPending}
         onChange={(event) => mutate({ data_source: event.target.value as DataSource })}
-        className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200 focus:outline-none"
+        className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200 focus:outline-hidden"
       >
         {(Object.entries(SOURCE_LABELS) as [DataSource, string][]).map(([value, label]) => (
           <option key={value} value={value}>

@@ -14,7 +14,7 @@ import { errorMessage } from '../utils/errors';
 const EXCHANGES: Exchange[] = ['ASX', 'NYSE'];
 
 const inputClass =
-  'rounded bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50';
+  'rounded bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-sky-500 disabled:opacity-50';
 const sourceBadge = (source: string) =>
   source === 'stake'
     ? 'rounded bg-sky-500/15 px-2 py-0.5 text-xs text-sky-300'

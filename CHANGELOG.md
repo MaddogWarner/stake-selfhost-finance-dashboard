@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Dependencies
+
+- Complete the Tailwind CSS v4 upgrade with its PostCSS adapter and CSS import;
+  retain the existing Tailwind configuration and form focus, placeholder, cursor
+  and card-shadow styling. Removes the vulnerable transitive `postcss-selector-parser`.
+- Frontend browser requirements are now Safari 16.4+, Chrome 111+ and Firefox 128+.
+
 ## 2026-09-16 — v0.5.4
 
 ### Dependencies
