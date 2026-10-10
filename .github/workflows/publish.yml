@@ -210,8 +210,10 @@ jobs:
           COMPOSE_PROJECT_NAME: security-headers
           COMPOSE_FILE: docker-compose.yml:docker-compose.test.yml
         run: |
-          docker compose stop backend
-          python3 ../scripts/check-security-headers.py --backend-stopped
+          # Keep the backend network alive but refuse the proxy connection immediately.
+          docker compose exec -T frontend sh -c 'sed -i "s|http://backend:8000|http://backend:1|" /etc/nginx/conf.d/default.conf && nginx -s reload'
+          sleep 1
+          python3 ../scripts/check-security-headers.py --upstream-unavailable
 
       - name: Stop disposable security test stack
         if: always()

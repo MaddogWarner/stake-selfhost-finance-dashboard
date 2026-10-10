@@ -35,7 +35,7 @@ def check(path: str, status: int, *, head: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--backend-stopped"]:
+    if sys.argv[1:] == ["--upstream-unavailable"]:
         check("/api/auth/status", 502)
     else:
         # /api/health is currently absent; unknown SPA routes fall back to index.html.
