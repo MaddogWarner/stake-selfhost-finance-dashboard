@@ -38,7 +38,7 @@ export default function RefreshControls() {
         id="auto-refresh"
         value={intervalMs === false ? 'off' : String(intervalMs)}
         onChange={(event) => setIntervalMs(event.target.value === 'off' ? false : Number(event.target.value))}
-        className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200 focus:outline-none"
+        className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-200 focus:outline-hidden"
       >
         {OPTIONS.map((option) => (
           <option key={option.label} value={option.value === false ? 'off' : String(option.value)}>

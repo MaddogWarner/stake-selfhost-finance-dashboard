@@ -100,7 +100,7 @@ export default function StakeConnect() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="mt-1 w-full rounded bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="mt-1 w-full rounded bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-sky-500"
             />
           </label>
           <label htmlFor="stake-password" className="block text-xs text-slate-400">
@@ -111,7 +111,7 @@ export default function StakeConnect() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="mt-1 w-full rounded bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-sky-500"
             />
           </label>
         </div>
@@ -131,7 +131,7 @@ export default function StakeConnect() {
             autoComplete="one-time-code"
             value={otp}
             onChange={(event) => setOtp(event.target.value)}
-            className="mt-1 w-full rounded bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="mt-1 w-full rounded bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-sky-500"
           />
         </label>
         <button
@@ -172,7 +172,7 @@ export default function StakeConnect() {
             value={token}
             onChange={(event) => setToken(event.target.value)}
             placeholder="Paste token here"
-            className="w-full rounded bg-slate-800 px-3 py-2 text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="w-full rounded bg-slate-800 px-3 py-2 text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-sky-500"
           />
           <button
             type="submit"

@@ -43,7 +43,7 @@ export default function FeedCard({ asset }: { asset: FeedAsset }) {
   const latest = quote?.price ?? closes[closes.length - 1] ?? null;
 
   return (
-    <article className="rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-sm">
+    <article className="rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-xs">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

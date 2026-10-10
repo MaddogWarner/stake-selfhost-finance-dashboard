@@ -54,12 +54,12 @@ function AuthCard({ mode, onAuthenticated }: { mode: 'setup' | 'login'; onAuthen
         </div>
         <label className="block text-sm text-slate-300">
           Password
-          <input autoFocus type="password" autoComplete={isSetup ? 'new-password' : 'current-password'} minLength={isSetup ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-none ring-sky-500 focus:ring-1" />
+          <input autoFocus type="password" autoComplete={isSetup ? 'new-password' : 'current-password'} minLength={isSetup ? 12 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-hidden ring-sky-500 focus:ring-1" />
         </label>
         {isSetup ? (
           <label className="block text-sm text-slate-300">
             Confirm password
-            <input type="password" autoComplete="new-password" minLength={12} required value={confirm} onChange={(event) => setConfirm(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-none ring-sky-500 focus:ring-1" />
+            <input type="password" autoComplete="new-password" minLength={12} required value={confirm} onChange={(event) => setConfirm(event.target.value)} className="mt-2 w-full rounded bg-slate-800 px-3 py-2 text-white outline-hidden ring-sky-500 focus:ring-1" />
           </label>
         ) : null}
         {error ? <p className="rounded bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
