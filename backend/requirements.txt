@@ -4,7 +4,7 @@ sqlalchemy[asyncio]==2.1.5
 asyncpg==0.32.0
 alembic==1.20.0
 pydantic-settings==2.16.0
-pydantic==2.14.1
+pydantic==2.14.2
 redis[hiredis]==8.1.0
 apscheduler==3.11.3
 yfinance==1.7.0
