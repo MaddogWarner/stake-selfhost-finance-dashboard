@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import date, datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 import yfinance as yf
 
@@ -26,6 +27,13 @@ def _nested_url(value: Any) -> str | None:
         url = value.get("url")
         return str(url) if url else None
     return str(value) if value else None
+
+
+def _safe_url(value: str | None) -> str | None:
+    # Feed URLs are rendered as links; reject javascript:, data: and other schemes.
+    if value and urlsplit(value).scheme.lower() in {"http", "https"}:
+        return value
+    return None
 
 
 async def get_price_history(ticker: str, exchange: str) -> list[dict[str, Any]]:
@@ -134,9 +142,11 @@ async def get_news(ticker: str, exchange: str, limit: int = 5) -> list[dict[str,
                 {
                     "headline": item.get("title") or content.get("title"),
                     "source": item.get("publisher") or provider.get("displayName"),
-                    "url": item.get("link")
-                    or _nested_url(content.get("clickThroughUrl"))
-                    or _nested_url(content.get("canonicalUrl")),
+                    "url": _safe_url(
+                        item.get("link")
+                        or _nested_url(content.get("clickThroughUrl"))
+                        or _nested_url(content.get("canonicalUrl"))
+                    ),
                     "published_at": published_at,
                 }
             )

@@ -57,7 +57,7 @@ export default function FeedCard({ asset }: { asset: FeedAsset }) {
               {asset.exchange}
             </span>
           </div>
-          <p className="mt-1 line-clamp-1 text-sm text-slate-400">{profile?.name ?? 'Company profile pending'}</p>
+          <p className="mt-1 line-clamp-1 text-sm text-slate-400">{profile?.name ?? (fundamentals.isError ? 'Company profile unavailable' : 'Company profile pending')}</p>
         </div>
         <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300">
           {asset.kind === 'holding' ? 'Holding' : 'Watchlist'}
@@ -70,6 +70,7 @@ export default function FeedCard({ asset }: { asset: FeedAsset }) {
           <div className={clsx('text-sm', changePositive ? 'text-emerald-300' : 'text-red-300')}>
             {formatMoney(quote?.day_change, quote?.currency)} {quote?.day_change_pct?.toFixed(2) ?? '-'}%
           </div>
+          {price.isError ? <p className="text-xs text-slate-500">Price unavailable.</p> : null}
         </div>
         {profile?.sector ? <span className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300">{profile.sector}</span> : null}
       </div>

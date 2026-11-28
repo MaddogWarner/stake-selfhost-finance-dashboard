@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -8,6 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.holdings import sync_stake_data
+from app.config import settings
 from app.db.redis import redis_client
 from app.db.session import AsyncSessionLocal
 from app.models.company_profile import CompanyProfile
@@ -17,6 +19,9 @@ from app.models.price_history import PriceHistory
 from app.models.watchlist import Watchlist
 from app.services import fmp_service, yfinance_service
 from app.services.settings_service import get_data_source, mark_stake_token_invalid
+from app.services.stake_service import get_cached_token
+
+logger = logging.getLogger(__name__)
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 NEW_YORK = ZoneInfo("America/New_York")
@@ -51,6 +56,10 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 
 async def sync_stake_holdings() -> None:
+    # Stake is optional; don't fail (and flag the token invalid) every 15 minutes
+    # when it was never connected.
+    if not (get_cached_token() or settings.stake_session_token):
+        return
     async with AsyncSessionLocal() as db:
         try:
             await sync_stake_data(db)
@@ -88,7 +97,7 @@ async def refresh_prices() -> None:
                     },
                 )
                 await db.execute(stmt)
-            await redis_client.delete(f"price:{ticker}")
+            await redis_client.delete(f"price:{exchange}:{ticker}")
         await db.commit()
 
 
@@ -102,8 +111,32 @@ async def refresh_fundamentals() -> None:
         for ticker, exchange in tickers:
             if ticker in existing:
                 continue
-            if source == "yfinance":
-                profile = await yfinance_service.get_fundamentals(ticker, exchange)
+            row: CompanyProfile | None = None
+            if source != "yfinance":
+                try:
+                    profile = await fmp_service.get_company_profile(db, ticker)
+                    ratios = await fmp_service.get_financial_ratios(db, ticker)
+                    if profile:
+                        row = CompanyProfile(
+                            ticker=ticker,
+                            exchange=exchange,
+                            name=profile.get("companyName"),
+                            sector=profile.get("sector"),
+                            industry=profile.get("industry"),
+                            description=profile.get("description"),
+                            market_cap=profile.get("marketCap"),
+                            pe_ratio=ratios.get("priceToEarningsRatioTTM"),
+                        )
+                except Exception as exc:  # noqa: BLE001 - mirror the API's Yahoo fallback
+                    logger.info(
+                        "FMP profile for %s unavailable (%s); using Yahoo", ticker, exc
+                    )
+            if row is None:
+                try:
+                    profile = await yfinance_service.get_fundamentals(ticker, exchange)
+                except Exception as exc:  # noqa: BLE001 - one bad ticker must not stop the job
+                    logger.warning("Yahoo profile for %s failed: %s", ticker, exc)
+                    continue
                 row = CompanyProfile(
                     ticker=ticker,
                     exchange=exchange,
@@ -113,26 +146,6 @@ async def refresh_fundamentals() -> None:
                     description=profile.get("description"),
                     market_cap=profile.get("market_cap"),
                     pe_ratio=profile.get("pe_ratio"),
-                )
-            else:
-                try:
-                    profile = await fmp_service.get_company_profile(db, ticker)
-                    ratios = await fmp_service.get_financial_ratios(db, ticker)
-                except HTTPException as exc:
-                    if exc.status_code == 429:
-                        break
-                    raise
-                if not profile:
-                    continue
-                row = CompanyProfile(
-                    ticker=ticker,
-                    exchange=exchange,
-                    name=profile.get("companyName"),
-                    sector=profile.get("sector"),
-                    industry=profile.get("industry"),
-                    description=profile.get("description"),
-                    market_cap=profile.get("marketCap"),
-                    pe_ratio=ratios.get("priceToEarningsRatioTTM"),
                 )
             db.add(row)
         await db.commit()
@@ -162,14 +175,14 @@ async def refresh_news() -> None:
                     index_elements=[News.ticker, News.url]
                 )
                 await db.execute(stmt)
-            await redis_client.delete(f"news:{ticker}")
+            await redis_client.delete(f"news:{exchange}:{ticker}")
         await db.commit()
 
 
 async def refresh_financials() -> None:
     async with AsyncSessionLocal() as db:
         source = await get_data_source(redis_client, db)
-        if source == "yfinance":
+        if source == "yfinance" or not settings.fmp_api_key:
             return
         tickers = await _unique_tickers()
         for ticker, exchange in tickers:
@@ -179,7 +192,13 @@ async def refresh_financials() -> None:
             except HTTPException as exc:
                 if exc.status_code == 429:
                     break
-                raise
+                logger.warning("FMP refresh for %s failed: %s", ticker, exc.detail)
+                continue
+            except Exception as exc:  # noqa: BLE001 - one bad ticker must not stop the job
+                logger.warning("FMP refresh for %s failed: %s", ticker, exc)
+                continue
+            if not profile:
+                continue
             payload = {
                 "ticker": ticker,
                 "exchange": exchange,
@@ -200,7 +219,7 @@ async def refresh_financials() -> None:
                 },
             )
             await db.execute(stmt)
-            await redis_client.delete(f"fundamentals:{ticker}", f"profile:{ticker}")
+            await redis_client.delete(f"fundamentals:{exchange}:{ticker}")
         await db.commit()
 
 

@@ -33,12 +33,12 @@ async def get_news(
     redis: Redis = Depends(get_redis),
 ) -> list[dict]:
     ticker = ticker.upper()
-    cache_key = f"news:{ticker}"
+    selected_exchange = exchange.upper() if exchange else "NYSE"
+    cache_key = f"news:{selected_exchange}:{ticker}"
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
 
-    selected_exchange = exchange.upper() if exchange else "NYSE"
     # News always comes from Yahoo Finance: FMP news is a paid add-on not available on
     # standard plans, whereas yfinance news is free and reliable.
     items = await yfinance_service.get_news(ticker, selected_exchange, limit=5)

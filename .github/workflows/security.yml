@@ -33,7 +33,8 @@ jobs:
         run: pip install pip-audit bandit semgrep
 
       - name: pip-audit
-        run: pip-audit || true
+        # Audit the app's pinned deps, not the runner's own environment.
+        run: pip-audit -r backend/requirements.txt
 
       - name: Bandit SAST
         run: bandit -r . -ll -x ./.git,./node_modules,./frontend --quiet
@@ -44,12 +45,8 @@ jobs:
           node-version: '20'
 
       - name: npm audit
-        run: |
-          if [ -f frontend/package.json ]; then
-            cd frontend && npm audit --audit-level=high || true
-          elif [ -f package.json ]; then
-            npm audit --audit-level=high || true
-          fi
+        working-directory: frontend
+        run: npm audit --audit-level=high
 
       - name: Semgrep
         run: semgrep --config=p/default --config=p/secrets --config=p/owasp-top-ten --error --quiet || true

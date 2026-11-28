@@ -79,11 +79,9 @@ The `stake_client._normalise_exchange()` function maps `AU`/`AUS` → `ASX`; eve
 
 ### Redis key convention
 ```
-price:{ticker}          TTL 300s
-fundamentals:{ticker}   TTL 86400s
-profile:{ticker}        TTL 604800s
-news:{ticker}           TTL 3600s
-52w:{ticker}            TTL 3600s
+price:{exchange}:{ticker}          TTL 300s
+fundamentals:{exchange}:{ticker}   TTL 86400s
+news:{exchange}:{ticker}           TTL 3600s
 ```
 
 ### Stake client
@@ -97,5 +95,5 @@ React 18 + Vite + TailwindCSS + Recharts. API base URL comes from `VITE_API_URL`
 
 ## Key external dependencies
 - `stake==0.13.0` — unofficial, asyncio-based; may break on Stake API changes
-- `yfinance==0.2.50` — unofficial; uses `requests-cache` (SQLite at `/tmp/yfinance.sqlite`, 1h TTL) to avoid throttling
+- `yfinance` (pinned in `backend/requirements.txt`) — unofficial; uses `requests-cache` (SQLite at `/tmp/yfinance.sqlite`, 1h TTL) to avoid throttling
 - FMP free tier: 250 calls/day; gated at 200 via `rate_limiter.py`

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { useEffect, useState } from 'react';
 import type { Exchange } from '../types';
 
 function isMarketOpen(exchange: Exchange): boolean {
@@ -8,7 +9,7 @@ function isMarketOpen(exchange: Exchange): boolean {
     hour: 'numeric',
     minute: 'numeric',
     weekday: 'short',
-    hour12: false,
+    hourCycle: 'h23',
   }).formatToParts(new Date());
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
   const weekday = get('weekday');
@@ -19,7 +20,12 @@ function isMarketOpen(exchange: Exchange): boolean {
 }
 
 export default function MarketStatusBadge({ exchange }: { exchange: Exchange }) {
-  const open = isMarketOpen(exchange);
+  const [open, setOpen] = useState(() => isMarketOpen(exchange));
+  useEffect(() => {
+    setOpen(isMarketOpen(exchange));
+    const timer = window.setInterval(() => setOpen(isMarketOpen(exchange)), 60_000);
+    return () => window.clearInterval(timer);
+  }, [exchange]);
   return (
     <span
       className={clsx(

@@ -40,6 +40,8 @@ async def sync_stake_data(db: AsyncSession) -> None:
                 "source": "stake",
                 "last_synced_at": func.now(),
             },
+            # Manual rows are user-owned; sync must never overwrite them.
+            where=Holding.source == "stake",
         )
         await db.execute(stmt)
 
@@ -117,7 +119,8 @@ async def update_holding(
         raise HTTPException(status_code=404, detail="Holding not found")
     if payload.quantity is not None:
         holding.quantity = payload.quantity
-    if payload.avg_cost is not None:
+    # avg_cost may be cleared with an explicit null; omitting it leaves it unchanged.
+    if "avg_cost" in payload.model_fields_set:
         holding.avg_cost = payload.avg_cost
     await db.commit()
     await db.refresh(holding)
