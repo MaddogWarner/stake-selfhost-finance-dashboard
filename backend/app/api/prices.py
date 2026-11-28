@@ -35,7 +35,7 @@ async def get_price(
 ) -> dict:
     ticker = ticker.upper()
     exchange = exchange.upper()
-    cache_key = f"price:{ticker}"
+    cache_key = f"price:{exchange}:{ticker}"
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)

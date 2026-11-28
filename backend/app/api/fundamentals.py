@@ -26,7 +26,7 @@ async def get_fundamentals(
 ) -> dict:
     ticker = ticker.upper()
     exchange = exchange.upper()
-    cache_key = f"fundamentals:{ticker}"
+    cache_key = f"fundamentals:{exchange}:{ticker}"
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)

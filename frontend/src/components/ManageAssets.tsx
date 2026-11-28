@@ -49,7 +49,7 @@ export default function ManageAssets() {
     event.preventDefault();
     if (editingId !== null) {
       updateHolding.mutate(
-        { id: editingId, payload: { quantity: hQty, avg_cost: hAvg || null } },
+        { id: editingId, payload: { quantity: hQty || undefined, avg_cost: hAvg || null } },
         { onSuccess: resetHoldingForm },
       );
       return;
@@ -157,13 +157,15 @@ export default function ManageAssets() {
                 <button
                   type="button"
                   onClick={() => startEdit(h.id, h.ticker, h.exchange, h.quantity, h.avg_cost)}
-                  className="text-sky-300 hover:text-sky-200"
+                  disabled={h.source === 'stake'}
+                  title={h.source === 'stake' ? 'Stake holdings are updated by sync' : undefined}
+                  className="text-sky-300 hover:text-sky-200 disabled:cursor-not-allowed disabled:text-slate-600"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => deleteHolding.mutate(h.id)}
+                  onClick={() => window.confirm(`Delete holding ${h.ticker}?`) && deleteHolding.mutate(h.id)}
                   className="text-red-300 hover:text-red-200"
                 >
                   Delete
@@ -219,7 +221,7 @@ export default function ManageAssets() {
               </div>
               <button
                 type="button"
-                onClick={() => removeWatchlist.mutate(w.id)}
+                onClick={() => window.confirm(`Remove ${w.ticker} from watchlist?`) && removeWatchlist.mutate(w.id)}
                 className="text-red-300 hover:text-red-200"
               >
                 Delete

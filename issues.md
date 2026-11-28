@@ -26,18 +26,14 @@ Possible future fixes:
 - infer exchange from holdings/watchlist before calling yfinance
 - add an explicit fallback for known ASX tickers
 
-## Fundamentals API — dead fallback expression in FMP path
+## Price, profile and news tables are keyed by ticker only
 
-**File:** `backend/app/api/fundamentals.py`, line 54
+**Files:** `backend/app/models/price_history.py`, `company_profile.py`, `news.py`
 
-```python
-"name": profile.get("companyName") or profile.get("companyName", ticker),
-```
+Redis cache keys include the exchange, but `price_history` (`ticker, date`), `company_profile` (`ticker`) and `news` (`ticker, url`) do not. A ticker held on both ASX and NYSE (e.g. `BHP`) shares one row set, so the DB fallback and stored profile can show the other market's data. Fixing it needs an `exchange` column in those unique constraints plus an Alembic migration.
 
-Both `get()` calls use the same key `"companyName"`. The first call is redundant — when `"companyName"` is absent, `profile.get("companyName")` returns `None` (falsy), so the `or` evaluates `profile.get("companyName", ticker)`, which also looks up the same absent key and returns `ticker`. The intent is to fall back to `ticker`, but the first `get()` adds noise without effect.
+## Stake sync never removes sold positions
 
-Fix:
+**File:** `backend/app/api/holdings.py` (`sync_stake_data`)
 
-```python
-"name": profile.get("companyName") or ticker,
-```
+Sync upserts what Stake returns but never deletes `source="stake"` rows that Stake no longer reports, so a fully sold position stays on the dashboard until deleted by hand. A fix must only prune exchanges whose fetch succeeded (`stake_client` tolerates per-exchange failures), or a transient ASX error would wipe ASX holdings.

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useMemo, useState } from 'react';
 import FeedCard from '../components/FeedCard';
@@ -10,6 +11,7 @@ import StakeConnect from '../components/StakeConnect';
 import { useHoldings, useStakeStatus, useSyncStake, useUsage, useVersion, useWatchlist } from '../hooks/useHoldings';
 import type { Exchange, FeedAsset, MarketTab } from '../types';
 import { logout } from '../api/auth';
+import { errorMessage } from '../utils/errors';
 
 const marketTabs: { label: string; value: MarketTab }[] = [
   { label: 'ASX', value: 'ASX' },
@@ -32,8 +34,21 @@ export default function Dashboard() {
   const stakeStatus = useStakeStatus();
   const version = useVersion();
   const [stakeBannerDismissed, setStakeBannerDismissed] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const tokenState = stakeStatus.data?.token_state;
   const showStakeBanner = !stakeBannerDismissed && (tokenState === 'expired' || tokenState === 'expiring_soon');
+
+  const handleLogout = () => {
+    setLogoutError(null);
+    logout()
+      .then(() => {
+        // Don't keep portfolio data in memory after logging out.
+        queryClient.clear();
+        window.dispatchEvent(new Event('stake-auth-required'));
+      })
+      .catch((error) => setLogoutError(errorMessage(error, 'Log out failed')));
+  };
 
   const assets = useMemo<FeedAsset[]>(() => {
     const holdingAssets = (holdings.data ?? []).map((item) => ({
@@ -72,7 +87,7 @@ export default function Dashboard() {
             </span>
             <button
               type="button"
-              onClick={() => logout().then(() => window.dispatchEvent(new Event('stake-auth-required')))}
+              onClick={handleLogout}
               className="rounded border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800"
             >
               Log out
@@ -102,6 +117,12 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {sync.isError || logoutError ? (
+          <div role="alert" className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {logoutError ?? `Sync failed: ${errorMessage(sync.error)}`}
+          </div>
+        ) : null}
+
         {showStakeBanner ? (
           <div
             className={clsx(
@@ -113,8 +134,8 @@ export default function Dashboard() {
           >
             <span>
               {tokenState === 'expired'
-                ? 'Stake token expired - holdings are no longer syncing. Re-connect in Manage.'
-                : 'Stake token expires soon - holdings may stop syncing. Re-connect in Manage.'}
+                ? 'Stake token expired - holdings are no longer syncing. Re-connect via Connect Stake.'
+                : 'Stake token expires soon - holdings may stop syncing. Re-connect via Connect Stake.'}
             </span>
             <button
               type="button"
@@ -133,6 +154,7 @@ export default function Dashboard() {
                 key={tab.value}
                 type="button"
                 onClick={() => setMarket(tab.value)}
+                aria-pressed={market === tab.value}
                 className={clsx(
                   'rounded px-3 py-2 text-sm font-semibold',
                   market === tab.value ? 'bg-slate-100 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700',
@@ -149,6 +171,7 @@ export default function Dashboard() {
                   key={tab}
                   type="button"
                   onClick={() => setKind(tab)}
+                  aria-pressed={kind === tab}
                   className={clsx(
                     'rounded px-3 py-2 text-sm',
                     kind === tab ? 'bg-sky-500/20 text-sky-200' : 'bg-slate-800 text-slate-400 hover:bg-slate-700',

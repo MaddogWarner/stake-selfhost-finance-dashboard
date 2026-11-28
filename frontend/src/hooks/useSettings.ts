@@ -14,7 +14,7 @@ export function useUpdateSettings() {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       queryClient.invalidateQueries({ queryKey: ['fundamentals'] });
       queryClient.invalidateQueries({ queryKey: ['news'] });
-      queryClient.invalidateQueries({ queryKey: ['prices'] });
+      queryClient.invalidateQueries({ queryKey: ['price'] });
     },
   });
 }
